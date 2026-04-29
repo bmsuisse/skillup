@@ -15,27 +15,55 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 app = typer.Typer(help="Minimal CLI to manage agent skills from GitHub releases.")
 console = Console()
 
-# Constants
-HOME = Path.home()
-SKILLS_DIR_AGENTS = HOME / ".agents" / "skills"
-SKILLS_DIR_CLAUDE = HOME / ".claude" / "skills"
-CACHE_DIR = HOME / ".agents" / "cache"
-LOCK_FILE = HOME / ".agents" / "skills.lock.json"
+from dataclasses import dataclass
+
+@dataclass
+class Settings:
+    is_global: bool = False
+
+    @property
+    def base_dir(self) -> Path:
+        return Path.home() if self.is_global else Path.cwd()
+
+    @property
+    def agents_dir(self) -> Path:
+        return self.base_dir / ".agents"
+
+    @property
+    def skills_dir_agents(self) -> Path:
+        return self.agents_dir / "skills"
+
+    @property
+    def skills_dir_claude(self) -> Path:
+        # For local install, we might want to keep it in .claude in current dir
+        # or maybe just under .agents. 
+        # The prompt says "install to current directory".
+        return self.base_dir / ".claude" / "skills"
+
+    @property
+    def cache_dir(self) -> Path:
+        return self.agents_dir / "cache"
+
+    @property
+    def lock_file(self) -> Path:
+        return self.agents_dir / "skills.lock.json"
+
+settings = Settings()
 
 def ensure_dirs():
     """Ensure all required directories exist."""
-    SKILLS_DIR_AGENTS.mkdir(parents=True, exist_ok=True)
-    SKILLS_DIR_CLAUDE.mkdir(parents=True, exist_ok=True)
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    settings.skills_dir_agents.mkdir(parents=True, exist_ok=True)
+    settings.skills_dir_claude.mkdir(parents=True, exist_ok=True)
+    settings.cache_dir.mkdir(parents=True, exist_ok=True)
 
 def load_lock() -> dict:
     """
     Load the skills lock file.
     Structure: { "repos": { "owner/repo": { "tag": "...", "skills": [...] } } }
     """
-    if LOCK_FILE.exists():
+    if settings.lock_file.exists():
         try:
-            data = json.loads(LOCK_FILE.read_text())
+            data = json.loads(settings.lock_file.read_text())
             if "repos" not in data:
                 return {"repos": {}}
             return data
@@ -44,9 +72,14 @@ def load_lock() -> dict:
     return {"repos": {}}
 
 def save_lock(data: dict):
-    """Save the skills lock file."""
-    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-    LOCK_FILE.write_text(json.dumps(data, indent=2))
+    """Save the skills lock file. Deletes the file if no repos are left."""
+    if not data.get("repos"):
+        if settings.lock_file.exists():
+            settings.lock_file.unlink()
+        return
+
+    settings.lock_file.parent.mkdir(parents=True, exist_ok=True)
+    settings.lock_file.write_text(json.dumps(data, indent=2))
 
 def get_latest_release(repo: str):
     """Fetch latest release info from GitHub API."""
@@ -58,7 +91,7 @@ def get_latest_release(repo: str):
 
 def download_release(repo: str, tag: str, url: str) -> Path:
     """Download release zip using gh CLI or requests, with caching."""
-    cache_path = CACHE_DIR / f"{repo.replace('/', '_')}_{tag}.zip"
+    cache_path = settings.cache_dir / f"{repo.replace('/', '_')}_{tag}.zip"
     
     if cache_path.exists():
         return cache_path
@@ -121,7 +154,7 @@ def install_skill(skill_name: str, zip_path: Path):
 
         skill_files = [f for f in z.namelist() if f.startswith(skill_prefix)]
         
-        for target_dir in [SKILLS_DIR_AGENTS, SKILLS_DIR_CLAUDE]:
+        for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
             dest = target_dir / skill_name
             if dest.exists():
                 shutil.rmtree(dest)
@@ -140,6 +173,13 @@ def install_skill(skill_name: str, zip_path: Path):
                     target_file.parent.mkdir(parents=True, exist_ok=True)
                     with z.open(file_info) as source, open(target_file, "wb") as target:
                         shutil.copyfileobj(source, target)
+
+@app.callback()
+def main(
+    is_global: bool = typer.Option(False, "--global", "-g", help="Use home directory instead of current directory")
+):
+    """Minimal CLI to manage agent skills from GitHub releases."""
+    settings.is_global = is_global
 
 @app.command()
 def add(
@@ -226,7 +266,7 @@ def remove():
     for item in selected:
         repo, skill = item.split(": ", 1)
         console.print(f"Removing [red]{skill}[/red] from {repo}...")
-        for target_dir in [SKILLS_DIR_AGENTS, SKILLS_DIR_CLAUDE]:
+        for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
             dest = target_dir / skill
             if dest.exists():
                 shutil.rmtree(dest)
@@ -267,7 +307,7 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
             console.print(f"  [green]{r} is already up-to-date (tag: {tag}).[/green]")
             continue
 
-        console.print(f"  Updating from {repo_data['tag']} to [cyan]{tag}[/cyan]...")
+        console.print(f"  Updating from {repo_data['tag']} to [cyan]{tag}[/cyan]...", highlight=False)
         zip_path = download_release(r, tag, zip_url)
         
         for skill in repo_data["skills"]:
@@ -307,6 +347,7 @@ def sync():
             continue
 
     console.print("[green]Synchronization complete![/green]")
+
 
 if __name__ == "__main__":
     app()
