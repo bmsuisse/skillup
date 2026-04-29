@@ -279,5 +279,34 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
         save_lock(lock)
         console.print(f"  [green]Successfully updated {r} to {tag}![/green]")
 
+@app.command()
+def sync():
+    """Install all skills as defined in the lock file."""
+    ensure_dirs()
+    lock = load_lock()
+    
+    if not lock["repos"]:
+        console.print("[yellow]No skills defined in lock file. Use 'add' to add skills.[/yellow]")
+        return
+
+    for repo, repo_data in lock["repos"].items():
+        tag = repo_data["tag"]
+        skills = repo_data["skills"]
+        console.print(f"Syncing [cyan]{repo}[/cyan] at [green]{tag}[/green]...")
+        
+        # Use the tag-specific zipball URL
+        zip_url = f"https://api.github.com/repos/{repo}/zipball/{tag}"
+        
+        try:
+            zip_path = download_release(repo, tag, zip_url)
+            for skill in skills:
+                console.print(f"  Installing [cyan]{skill}[/cyan]...")
+                install_skill(skill, zip_path)
+        except Exception as e:
+            console.print(f"[red]Error syncing {repo}:[/red] {e}")
+            continue
+
+    console.print("[green]Synchronization complete![/green]")
+
 if __name__ == "__main__":
     app()
