@@ -40,19 +40,8 @@ def test_add_skills_e2e(temp_home):
     """End-to-end test for bmsuisse/skills using --skill."""
     # We use a real repo that we know exists and has skills
     repo = "bmsuisse/skills"
-    # Assuming 'github' or 'gemini' might be available skills in that repo
-    # Note: If these specific skills don't exist, the test will fail on installation check,
-    # but the 'add' command itself should still succeed (just reporting nothing selected).
-    # Since I don't know the exact skills in bmsuisse/skills, I'll first list them 
-    # or just try to add one that is highly likely to exist based on typical skill repos.
-    
-    # Actually, let's first check what's available or just try a likely one.
-    # For bmsuisse/skills, 'github' is a very common one.
     
     result = runner.invoke(app, ["add", repo, "--skill", "github"])
-    
-    # If the repo exists and has a release, this should work.
-    # If 'github' skill doesn't exist, it will print a warning but exit 0.
     assert result.exit_code == 0
     
     # Check if lock file was created
@@ -65,6 +54,32 @@ def test_add_skills_e2e(temp_home):
             assert (cli.SKILLS_DIR_AGENTS / "github").exists()
             assert (cli.SKILLS_DIR_CLAUDE / "github").exists()
             assert (cli.SKILLS_DIR_AGENTS / "github" / "SKILL.md").exists()
+
+def test_add_specific_skills_e2e(temp_home):
+    """End-to-end test for installing specific skills 'prek' and 'nicegui' from bmsuisse/skills."""
+    repo = "bmsuisse/skills"
+    
+    # Install prek and nicegui
+    result = runner.invoke(app, ["add", repo, "--skill", "prek", "--skill", "nicegui"])
+    assert result.exit_code == 0
+    
+    # Check lock file
+    assert cli.LOCK_FILE.exists()
+    lock_data = json.loads(cli.LOCK_FILE.read_text())
+    installed_skills = lock_data["repos"][repo]["skills"]
+    
+    for skill in ["prek", "nicegui"]:
+        assert skill in installed_skills
+        
+        # Verify existence in both target directories
+        for target_dir in [cli.SKILLS_DIR_AGENTS, cli.SKILLS_DIR_CLAUDE]:
+            skill_path = target_dir / skill
+            assert skill_path.exists(), f"Skill {skill} not found in {target_dir}"
+            assert (skill_path / "SKILL.md").exists(), f"SKILL.md for {skill} not found in {target_dir}"
+            
+            # Verify it's a directory and not empty
+            assert skill_path.is_dir()
+            assert any(skill_path.iterdir())
 
 def test_remove_skills_e2e(temp_home):
     """End-to-end test for removing skills."""
@@ -86,8 +101,6 @@ def test_remove_skills_e2e(temp_home):
     }
     cli.save_lock(lock_data)
     
-    # We can't easily test interactive 'remove' with CliRunner's checkbox,
-    # so we'll just verify the initial state. 
-    # In a real E2E, we'd mock questionary.
+    # Verify initial state
     assert (cli.SKILLS_DIR_AGENTS / skill).exists()
     assert cli.LOCK_FILE.exists()
