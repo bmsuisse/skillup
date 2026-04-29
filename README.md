@@ -8,7 +8,7 @@ A minimal, user-friendly Python CLI to manage agent skills from GitHub releases.
 -   **Multi-Repo Support:** Manage skills from multiple repositories independently.
 -   **Lock File State:** Tracks installed versions (release tags) and skills in `~/.agents/skills.lock.json` for reproducibility.
 -   **Automated Updates:** Easily upgrade all or specific repositories to their latest GitHub release.
--   **Smart Caching:** Downloads are cached in `~/.agents/cache` to avoid redundant network usage.
+-   **Smart Caching:** Downloads are cached in a temporary directory (`TEMP` or `/tmp`) to avoid redundant network usage. Can be overridden with `BMS_SKILL_CACHE_DIR`.
 -   **GitHub CLI Integration:** Uses the `gh` tool for fast downloads if available, with a reliable `requests` fallback.
 
 ## Installation
