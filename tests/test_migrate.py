@@ -38,8 +38,7 @@ def mock_network():
 
 
 def _write_skills_lock(directory: Path, skills: dict) -> Path:
-    path = directory / ".claude" / "skills-lock.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = directory / "skills-lock.json"
     path.write_text(json.dumps({"version": 1, "skills": skills}))
     return path
 

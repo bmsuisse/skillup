@@ -202,7 +202,7 @@ def migrate(
     input_file: Optional[Path] = typer.Argument(None, help="Path to skills-lock.json (defaults to .claude/skills-lock.json)"),
 ):
     """Migrate a Claude Code skills-lock.json to the bms-skills lock format."""
-    resolved = input_file if input_file is not None else settings.base_dir / ".claude" / "skills-lock.json"
+    resolved = input_file if input_file is not None else settings.base_dir / "skills-lock.json"
 
     if not resolved.exists():
         console.print(f"[red]File not found: {resolved}[/red]")
