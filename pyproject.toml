@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bms-skills-cli"
-version = "0.2.0"
+version = "0.2.1"
 description = "A minimal CLI to manage agent skills from GitHub releases."
 readme = "README.md"
 requires-python = ">=3.11"

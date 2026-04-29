@@ -84,16 +84,45 @@ def save_lock(data: dict):
     settings.lock_file.parent.mkdir(parents=True, exist_ok=True)
     settings.lock_file.write_text(json.dumps(data, indent=2))
 
+def get_github_token() -> Optional[str]:
+    """Retrieve GitHub token from environment or gh CLI."""
+    token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+    if token:
+        return token
+
+    gh_path = shutil.which("gh")
+    if gh_path:
+        try:
+            result = subprocess.run(
+                [gh_path, "auth", "token"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            token = result.stdout.strip()
+            if token:
+                return token
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+    console.print("[yellow]Warning: GitHub authentication not found. API rate limits may apply.[/yellow]")
+    return None
+
 def get_latest_release(repo: str):
     """Fetch latest release info from GitHub API."""
     url = f"https://api.github.com/repos/{repo}/releases/latest"
-    response = requests.get(url)
+    headers = {}
+    token = get_github_token()
+    if token:
+        headers["Authorization"] = f"token {token}"
+    
+    response = requests.get(url, headers=headers)
     response.raise_for_status()
     data = response.json()
     return data["tag_name"], data["zipball_url"]
 
 def download_release(repo: str, tag: str, url: str) -> Path:
-    """Download release zip using gh CLI or requests, with caching."""
+    """Download release zip using requests, with caching."""
     cache_path = settings.cache_dir / f"{repo.replace('/', '_')}_{tag}.zip"
     
     if cache_path.exists():
@@ -106,22 +135,12 @@ def download_release(repo: str, tag: str, url: str) -> Path:
     ) as progress:
         progress.add_task(description=f"Downloading {repo} {tag}...", total=None)
         
-        # Try GH CLI first
-        gh_path = shutil.which("gh")
-        if gh_path:
-            try:
-                subprocess.run(
-                    [gh_path, "release", "download", tag, "-R", repo, "--archive", "zip", "-O", str(cache_path)],
-                    check=True,
-                    capture_output=True
-                )
-                if cache_path.exists():
-                    return cache_path
-            except subprocess.CalledProcessError:
-                pass # Fallback to requests
+        headers = {}
+        token = get_github_token()
+        if token:
+            headers["Authorization"] = f"token {token}"
 
-        # Fallback to requests
-        response = requests.get(url, stream=True)
+        response = requests.get(url, headers=headers, stream=True)
         response.raise_for_status()
         with open(cache_path, "wb") as f:
             shutil.copyfileobj(response.raw, f)
