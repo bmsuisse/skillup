@@ -30,11 +30,18 @@ def temp_dirs(tmp_path):
 def mock_network():
     """Fixture to mock network-dependent functions in cli.py."""
     with patch("bms_skills.cli.get_latest_release") as mock_latest, \
+         patch("bms_skills.cli.get_commit_sha") as mock_commit, \
          patch("bms_skills.cli.download_release") as mock_download, \
          patch("bms_skills.cli.get_skills_in_zip") as mock_get_skills, \
          patch("bms_skills.cli.install_skill") as mock_install:
         
         mock_latest.return_value = ("v1.0.0", "http://example.com/zip")
+        mock_commit.side_effect = lambda repo, ref: {
+            "v1.0.0": "release-sha",
+            "v1.1.0": "release-sha-2",
+            "main": "main-sha",
+            "develop": "develop-sha",
+        }.get(ref, f"{ref}-sha")
         mock_download.return_value = Path("dummy.zip")
         mock_get_skills.return_value = ["github", "prek", "nicegui"]
         
@@ -49,6 +56,7 @@ def mock_network():
         
         yield {
             "latest": mock_latest,
+            "commit": mock_commit,
             "download": mock_download,
             "get_skills": mock_get_skills,
             "install": mock_install
@@ -68,6 +76,10 @@ def test_add_skills_local_default(temp_dirs, mock_network):
     # Check if lock file was created in CWD
     lock_file = fake_cwd / ".agents" / "skills.lock.json"
     assert lock_file.exists()
+    lock_data = json.loads(lock_file.read_text())
+    assert lock_data["repos"][repo]["source"] == "release"
+    assert lock_data["repos"][repo]["tag"] == "v1.0.0"
+    assert lock_data["repos"][repo]["commit"] == "release-sha"
     
     # Check if skills were installed in CWD
     assert (fake_cwd / ".agents" / "skills" / "github").exists()
@@ -90,6 +102,9 @@ def test_add_skills_global(temp_dirs, mock_network):
     # Check if lock file was created in HOME
     lock_file = fake_home / ".agents" / "skills.lock.json"
     assert lock_file.exists()
+    lock_data = json.loads(lock_file.read_text())
+    assert lock_data["repos"][repo]["source"] == "release"
+    assert lock_data["repos"][repo]["commit"] == "release-sha"
     
     # Check if skills were installed in HOME
     assert (fake_home / ".agents" / "skills" / "github").exists()
@@ -157,6 +172,7 @@ def test_sync_local(temp_dirs, mock_network):
     
     # Verify installation in CWD
     assert (fake_cwd / ".agents" / "skills" / skill).exists()
+    mock_network["download"].assert_called_with(repo, "v1.0.0", f"https://api.github.com/repos/{repo}/zipball/v1.0.0")
 
 def test_update_local(temp_dirs, mock_network):
     """Test update in local directory."""
@@ -188,6 +204,40 @@ def test_update_local(temp_dirs, mock_network):
     # Verify lock file updated
     lock = cli.load_lock()
     assert lock["repos"][repo]["tag"] == "v1.1.0"
+    assert lock["repos"][repo]["source"] == "release"
+    assert lock["repos"][repo]["commit"] == "release-sha-2"
+
+def test_add_skills_from_branch(temp_dirs, mock_network):
+    """Test that branch-based installs store branch and commit metadata."""
+    fake_home, fake_cwd = temp_dirs
+    repo = "anthropics/skills"
+
+    result = runner.invoke(app, ["add", repo, "--branch", "develop", "--skill", "github"])
+    assert result.exit_code == 0
+
+    lock = cli.load_lock()
+    assert lock["repos"][repo]["source"] == "branch"
+    assert lock["repos"][repo]["branch"] == "develop"
+    assert lock["repos"][repo]["commit"] == "develop-sha"
+    mock_network["latest"].assert_not_called()
+    mock_network["download"].assert_called_with(repo, "develop-sha", "https://api.github.com/repos/anthropics/skills/zipball/develop-sha")
+
+def test_add_skills_falls_back_to_main_branch(temp_dirs, mock_network):
+    """Test that repos without releases fall back to main."""
+    fake_home, fake_cwd = temp_dirs
+    repo = "anthropics/skills"
+
+    response = MagicMock(status_code=404)
+    mock_network["latest"].side_effect = cli.requests.HTTPError(response=response)
+
+    result = runner.invoke(app, ["add", repo, "--skill", "github"])
+    assert result.exit_code == 0
+
+    lock = cli.load_lock()
+    assert lock["repos"][repo]["source"] == "branch"
+    assert lock["repos"][repo]["branch"] == "main"
+    assert lock["repos"][repo]["commit"] == "main-sha"
+    mock_network["download"].assert_called_with(repo, "main-sha", "https://api.github.com/repos/anthropics/skills/zipball/main-sha")
 
 def test_cache_dir_override(temp_dirs, mock_network):
     """Test that BMS_SKILL_CACHE_DIR environment variable overrides the default cache dir."""

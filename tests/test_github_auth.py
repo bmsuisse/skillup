@@ -1,7 +1,14 @@
 import os
-import subprocess
+import requests
 from unittest.mock import patch, MagicMock, PropertyMock
-from bms_skills.cli import get_github_token, get_latest_release, download_release, settings, Settings, console
+from bms_skills.cli import (
+    console,
+    download_release,
+    get_commit_sha,
+    get_github_token,
+    get_latest_release,
+    get_repo_source,
+)
 
 def test_get_github_token_from_env():
     with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token"}):
@@ -42,6 +49,32 @@ def test_get_latest_release_uses_token(mock_get, mock_token):
     
     args, kwargs = mock_get.call_args
     assert kwargs["headers"]["Authorization"] == "token test_token"
+
+@patch("bms_skills.cli.get_github_token")
+@patch("requests.get")
+def test_get_commit_sha_uses_token(mock_get, mock_token):
+    mock_token.return_value = "test_token"
+    mock_get.return_value.json.return_value = {"sha": "abc123"}
+    mock_get.return_value.raise_for_status = MagicMock()
+
+    assert get_commit_sha("owner/repo", "main") == "abc123"
+
+    args, kwargs = mock_get.call_args
+    assert kwargs["headers"]["Authorization"] == "token test_token"
+
+@patch("bms_skills.cli.get_commit_sha")
+@patch("bms_skills.cli.get_latest_release")
+def test_get_repo_source_falls_back_to_main_branch(mock_latest, mock_commit):
+    response = MagicMock(status_code=404)
+    mock_latest.side_effect = requests.HTTPError(response=response)
+    mock_commit.return_value = "main-sha"
+
+    source = get_repo_source("owner/repo")
+
+    assert source.kind == "branch"
+    assert source.ref == "main"
+    assert source.commit == "main-sha"
+    assert source.zip_url == "https://api.github.com/repos/owner/repo/zipball/main-sha"
 
 @patch("bms_skills.cli.get_github_token")
 @patch("requests.get")
