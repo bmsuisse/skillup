@@ -1,0 +1,18 @@
+[project]
+name = "skills-cli"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "typer",
+    "rich",
+    "questionary",
+    "requests",
+]
+
+[project.scripts]
+skills-cli = "main:app"
+
+[tool.uv]
+package = false
