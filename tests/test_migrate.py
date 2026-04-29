@@ -5,8 +5,9 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-import bms_skills.cli as cli
-from bms_skills.cli import app, settings
+from bms_skills.cli import app
+from bms_skills.lock import load_lock
+from bms_skills.settings import settings
 
 runner = CliRunner()
 
@@ -29,8 +30,8 @@ def temp_dirs(tmp_path):
 
 @pytest.fixture
 def mock_network():
-    with patch("bms_skills.cli.get_latest_release") as mock_latest, \
-         patch("bms_skills.cli.get_commit_sha") as mock_commit:
+    with patch("bms_skills.github.get_latest_release") as mock_latest, \
+         patch("bms_skills.github.get_commit_sha") as mock_commit:
         mock_latest.return_value = ("v1.0.0", "http://example.com/zip")
         mock_commit.side_effect = lambda repo, ref: f"{ref}-sha"
         yield {"latest": mock_latest, "commit": mock_commit}
@@ -61,7 +62,7 @@ def test_migrate_creates_lock(temp_dirs, mock_network):
     result = runner.invoke(app, ["migrate"])
     assert result.exit_code == 0, result.stdout
 
-    lock = cli.load_lock()
+    lock = load_lock()
     assert "google-gemini/gemini-cli" in lock["repos"]
     assert "bmsuisse/skills" in lock["repos"]
 
@@ -86,7 +87,7 @@ def test_migrate_groups_skills_by_repo(temp_dirs, mock_network):
     result = runner.invoke(app, ["migrate"])
     assert result.exit_code == 0, result.stdout
 
-    lock = cli.load_lock()
+    lock = load_lock()
     assert len(lock["repos"]) == 1
     repo_entry = lock["repos"]["owner/repo"]
     assert set(repo_entry["skills"]) == {"skill-a", "skill-b"}
@@ -104,7 +105,7 @@ def test_migrate_skips_non_github_source(temp_dirs, mock_network):
     assert result.exit_code == 0, result.stdout
     assert "Skipping local-skill" in result.stdout
 
-    lock = cli.load_lock()
+    lock = load_lock()
     assert "owner/repo" in lock["repos"]
     assert len(lock["repos"]) == 1
 
@@ -132,7 +133,7 @@ def test_migrate_custom_input_path(temp_dirs, mock_network):
     result = runner.invoke(app, ["migrate", str(custom_path)])
     assert result.exit_code == 0, result.stdout
 
-    lock = cli.load_lock()
+    lock = load_lock()
     assert "owner/repo" in lock["repos"]
     assert "my-skill" in lock["repos"]["owner/repo"]["skills"]
 
