@@ -142,8 +142,11 @@ def install_skill(skill_name: str, zip_path: Path):
                         shutil.copyfileobj(source, target)
 
 @app.command()
-def add(repo: str = typer.Argument(..., help="GitHub repository (owner/repo)")):
-    """Interactively add skills from a GitHub release."""
+def add(
+    repo: str = typer.Argument(..., help="GitHub repository (owner/repo)"),
+    skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)")
+):
+    """Add skills from a GitHub release (interactively or via --skill)."""
     ensure_dirs()
     lock = load_lock()
     
@@ -158,19 +161,32 @@ def add(repo: str = typer.Argument(..., help="GitHub repository (owner/repo)")):
     
     repo_data = lock["repos"].get(repo, {"tag": tag, "skills": []})
     installed_skills = set(repo_data["skills"])
-    to_show = [s for s in available_skills if s not in installed_skills]
     
-    if not to_show:
-        console.print(f"[yellow]No new skills available to add from {repo}.[/yellow]")
-        return
+    if skills:
+        # Non-interactive mode
+        selected = [s for s in skills if s in available_skills and s not in installed_skills]
+        invalid = [s for s in skills if s not in available_skills]
+        already_installed = [s for s in skills if s in installed_skills]
+        
+        if invalid:
+            console.print(f"[yellow]Warning: Skills not found in {repo}: {', '.join(invalid)}[/yellow]")
+        if already_installed:
+            console.print(f"[blue]Note: Skills already installed from {repo}: {', '.join(already_installed)}[/blue]")
+    else:
+        # Interactive mode
+        to_show = [s for s in available_skills if s not in installed_skills]
+        
+        if not to_show:
+            console.print(f"[yellow]No new skills available to add from {repo}.[/yellow]")
+            return
 
-    selected = questionary.checkbox(
-        f"Select skills to add from {repo}:",
-        choices=to_show
-    ).ask()
+        selected = questionary.checkbox(
+            f"Select skills to add from {repo}:",
+            choices=to_show
+        ).ask()
 
     if not selected:
-        console.print("No skills selected.")
+        console.print("No skills selected or available for installation.")
         return
 
     for skill in selected:
