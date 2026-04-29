@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "bms-skills-cli"
-version = "0.3.1"
+name = "skillup"
+version = "0.3.2"
 description = "A minimal CLI to manage agent skills from GitHub releases."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,10 +22,10 @@ dev = [
 ]
 
 [project.scripts]
-bms-skills = "bms_skills.cli:app"
+skillup = "skillup.cli:app"
 
 [tool.uv]
 package = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["bms_skills"]
+packages = ["skillup"]

@@ -1,10 +1,10 @@
 import json
 import requests
 from pathlib import Path
-from bms_skills.cli import app
-from bms_skills.settings import settings
-from bms_skills.lock import load_lock, save_lock
-from bms_skills.install import ensure_dirs
+from skillup.cli import app
+from skillup.settings import settings
+from skillup.lock import load_lock, save_lock
+from skillup.install import ensure_dirs
 from typer.testing import CliRunner
 import pytest
 from unittest.mock import patch, MagicMock
@@ -31,11 +31,11 @@ def temp_dirs(tmp_path):
 @pytest.fixture
 def mock_network():
     """Fixture to mock network-dependent functions."""
-    with patch("bms_skills.github.get_latest_release") as mock_latest, \
-         patch("bms_skills.github.get_commit_sha") as mock_commit, \
-         patch("bms_skills.cli.download_release") as mock_download, \
-         patch("bms_skills.cli.get_skills_in_zip") as mock_get_skills, \
-         patch("bms_skills.cli.install_skill") as mock_install:
+    with patch("skillup.github.get_latest_release") as mock_latest, \
+         patch("skillup.github.get_commit_sha") as mock_commit, \
+         patch("skillup.cli.download_release") as mock_download, \
+         patch("skillup.cli.get_skills_in_zip") as mock_get_skills, \
+         patch("skillup.cli.install_skill") as mock_install:
 
         mock_latest.return_value = ("v1.0.0", "http://example.com/zip")
         mock_commit.side_effect = lambda repo, ref: {
@@ -221,12 +221,12 @@ def test_add_skills_falls_back_to_main_branch(temp_dirs, mock_network):
     mock_network["download"].assert_called_with(repo, "main-sha", "https://api.github.com/repos/anthropics/skills/zipball/main-sha")
 
 def test_cache_dir_override(temp_dirs, mock_network):
-    """Test that BMS_SKILL_CACHE_DIR environment variable overrides the default cache dir."""
+    """Test that SKILLUP_CACHE_DIR environment variable overrides the default cache dir."""
     fake_home, fake_cwd = temp_dirs
     custom_cache = fake_home / "custom_cache"
     custom_cache.mkdir()
 
-    with patch("os.getenv", side_effect=lambda key, default=None: str(custom_cache) if key == "BMS_SKILL_CACHE_DIR" else default):
+    with patch("os.getenv", side_effect=lambda key, default=None: str(custom_cache) if key == "SKILLUP_CACHE_DIR" else default):
         assert settings.cache_dir == custom_cache
 
         result = runner.invoke(app, ["sync"])

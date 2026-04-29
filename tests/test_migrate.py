@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from bms_skills.cli import app
-from bms_skills.lock import load_lock
-from bms_skills.settings import settings
+from skillup.cli import app
+from skillup.lock import load_lock
+from skillup.settings import settings
 
 runner = CliRunner()
 
@@ -30,8 +30,8 @@ def temp_dirs(tmp_path):
 
 @pytest.fixture
 def mock_network():
-    with patch("bms_skills.github.get_latest_release") as mock_latest, \
-         patch("bms_skills.github.get_commit_sha") as mock_commit:
+    with patch("skillup.github.get_latest_release") as mock_latest, \
+         patch("skillup.github.get_commit_sha") as mock_commit:
         mock_latest.return_value = ("v1.0.0", "http://example.com/zip")
         mock_commit.side_effect = lambda repo, ref: f"{ref}-sha"
         yield {"latest": mock_latest, "commit": mock_commit}

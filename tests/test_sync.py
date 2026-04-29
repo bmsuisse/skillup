@@ -5,10 +5,10 @@ from unittest.mock import patch, MagicMock
 import pytest
 from typer.testing import CliRunner
 
-from bms_skills.cli import app
-from bms_skills.install import ensure_dirs
-from bms_skills.lock import save_lock
-from bms_skills.settings import settings
+from skillup.cli import app
+from skillup.install import ensure_dirs
+from skillup.lock import save_lock
+from skillup.settings import settings
 
 runner = CliRunner()
 
@@ -35,8 +35,8 @@ def test_sync_no_lock(temp_dirs):
     assert "No skills defined in lock file" in result.stdout
 
 
-@patch("bms_skills.cli.download_release")
-@patch("bms_skills.cli.install_skill")
+@patch("skillup.cli.download_release")
+@patch("skillup.cli.install_skill")
 def test_sync_with_lock(mock_install, mock_download, temp_dirs):
     fake_home, fake_cwd = temp_dirs
     repo = "test/repo"

@@ -201,7 +201,7 @@ def sync():
 def migrate(
     input_file: Optional[Path] = typer.Argument(None, help="Path to skills-lock.json (defaults to .claude/skills-lock.json)"),
 ):
-    """Migrate a Claude Code skills-lock.json to the bms-skills lock format."""
+    """Migrate a Claude Code skills-lock.json to the skillup lock format."""
     resolved = input_file if input_file is not None else settings.base_dir / "skills-lock.json"
 
     if not resolved.exists():

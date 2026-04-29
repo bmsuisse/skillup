@@ -1,4 +1,4 @@
-from bms_skills.cli import app
+from skillup.cli import app
 from typer.testing import CliRunner
 
 runner = CliRunner()
