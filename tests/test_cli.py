@@ -9,3 +9,4 @@ def test_help():
     assert "add" in result.stdout
     assert "remove" in result.stdout
     assert "update" in result.stdout
+    assert "sync" in result.stdout

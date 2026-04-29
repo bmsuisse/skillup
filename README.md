@@ -50,6 +50,13 @@ Or update a specific repository:
 bms-skills update --repo google/gemini-cli-skills
 ```
 
+### 4. Sync Skills
+Install all skills as defined in the lock file (useful for setting up a new machine):
+
+```bash
+bms-skills sync
+```
+
 ## Skill Definition
 A folder is recognized as a valid skill if it resides within a `skills/` directory at the repository root and contains a `SKILL.md` file.
 
