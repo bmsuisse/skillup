@@ -1,13 +1,13 @@
 # bms-skills-cli
 
-A minimal, user-friendly Python CLI to manage agent skills from GitHub releases. It installs skills to both `~/.agents/skills` and `~/.claude/skills` for seamless integration across platforms.
+A minimal, user-friendly Python CLI to manage agent skills from GitHub releases or branches. It installs skills to both `~/.agents/skills` and `~/.claude/skills` for seamless integration across platforms.
 
 ## Features
 
 -   **Interactive Installation:** Select specific skills to add from any GitHub repository.
 -   **Multi-Repo Support:** Manage skills from multiple repositories independently.
--   **Lock File State:** Tracks installed versions (release tags) and skills in `~/.agents/skills.lock.json` for reproducibility.
--   **Automated Updates:** Easily upgrade all or specific repositories to their latest GitHub release.
+-   **Lock File State:** Tracks installed sources (release tags or branches), pinned commit SHAs, and skills in `~/.agents/skills.lock.json` for reproducibility.
+-   **Automated Updates:** Easily upgrade all or specific repositories to their latest GitHub release or tracked branch head.
 -   **Smart Caching:** Downloads are cached in a temporary directory (`TEMP` or `/tmp`) to avoid redundant network usage. Can be overridden with `BMS_SKILL_CACHE_DIR`.
 -   **GitHub CLI Integration:** Uses the `gh` tool for fast downloads if available, with a reliable `requests` fallback.
 
@@ -30,6 +30,12 @@ Interactively select skills to add from a GitHub repository's latest release:
 bms-skills add google/gemini-cli-skills
 ```
 
+If a repository has no releases, the CLI automatically falls back to the `main` branch. You can also install directly from a branch:
+
+```bash
+bms-skills add anthropics/skills --branch main --skill pdf
+```
+
 ### 2. Remove Skills
 Interactively select installed skills to remove from your system:
 
@@ -38,7 +44,7 @@ bms-skills remove
 ```
 
 ### 3. Update Skills
-Update all installed skills to their latest versions:
+Update all installed skills to their latest tracked versions:
 
 ```bash
 bms-skills update
@@ -51,7 +57,7 @@ bms-skills update --repo google/gemini-cli-skills
 ```
 
 ### 4. Sync Skills
-Install all skills as defined in the lock file (useful for setting up a new machine):
+Install all skills as defined in the lock file using the pinned commit SHAs (useful for setting up a new machine):
 
 ```bash
 bms-skills sync
