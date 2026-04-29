@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "bms-skills"
+name = "bms-skills-cli"
 version = "0.1.0"
 description = "A minimal CLI to manage agent skills from GitHub releases."
 readme = "README.md"
