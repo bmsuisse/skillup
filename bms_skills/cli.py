@@ -42,7 +42,10 @@ class Settings:
 
     @property
     def cache_dir(self) -> Path:
-        return self.agents_dir / "cache"
+        env_cache = os.getenv("BMS_SKILL_CACHE_DIR")
+        if env_cache:
+            return Path(env_cache)
+        return Path(os.getenv("TEMP", "/tmp")) / "bms_skills_cache"
 
     @property
     def lock_file(self) -> Path:

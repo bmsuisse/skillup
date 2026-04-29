@@ -11,14 +11,17 @@ runner = CliRunner()
 
 @pytest.fixture
 def temp_dirs(tmp_path):
-    """Fixture to mock HOME and CWD and redirect all paths to a temp directory."""
+    """Fixture to mock HOME, CWD and TEMP and redirect all paths to a temp directory."""
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     fake_cwd = tmp_path / "cwd"
     fake_cwd.mkdir()
+    fake_temp = tmp_path / "temp"
+    fake_temp.mkdir()
     
     with patch("pathlib.Path.home", return_value=fake_home), \
-         patch("pathlib.Path.cwd", return_value=fake_cwd):
+         patch("pathlib.Path.cwd", return_value=fake_cwd), \
+         patch("os.getenv", side_effect=lambda key, default=None: str(fake_temp) if key == "TEMP" else default):
         # Reset settings to default before each test
         settings.is_global = False
         yield fake_home, fake_cwd
@@ -185,3 +188,20 @@ def test_update_local(temp_dirs, mock_network):
     # Verify lock file updated
     lock = cli.load_lock()
     assert lock["repos"][repo]["tag"] == "v1.1.0"
+
+def test_cache_dir_override(temp_dirs, mock_network):
+    """Test that BMS_SKILL_CACHE_DIR environment variable overrides the default cache dir."""
+    fake_home, fake_cwd = temp_dirs
+    custom_cache = fake_home / "custom_cache"
+    custom_cache.mkdir()
+    
+    with patch("os.getenv", side_effect=lambda key, default=None: str(custom_cache) if key == "BMS_SKILL_CACHE_DIR" else default):
+        # We need to re-read settings.cache_dir because it's a property that calls os.getenv
+        assert settings.cache_dir == custom_cache
+        
+        # Run a command that ensures dirs
+        result = runner.invoke(app, ["sync"])
+        assert result.exit_code == 0
+        
+        # Verify custom cache dir was created (it was already created by us, but ensure_dirs would too)
+        assert custom_cache.exists()
