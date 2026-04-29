@@ -5,7 +5,7 @@ import subprocess
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import questionary
 import requests
@@ -177,10 +177,10 @@ def get_repo_source(repo: str, branch: Optional[str] = None) -> RepoSource:
         raise
 
 
-def normalize_repo_data(repo_data: dict) -> dict:
+def normalize_repo_data(repo_data: dict[str, Any]) -> dict[str, Any]:
     """Normalize legacy lock file entries to the current structure."""
     skills = list(repo_data.get("skills", []))
-    normalized = {"skills": skills}
+    normalized: dict[str, Any] = {"skills": skills}
 
     if repo_data.get("source") in {"release", "branch"}:
         normalized["source"] = repo_data["source"]
@@ -208,7 +208,7 @@ def normalize_repo_data(repo_data: dict) -> dict:
     return normalized
 
 
-def apply_source(repo_data: dict, source: RepoSource) -> dict:
+def apply_source(repo_data: dict[str, Any], source: RepoSource) -> dict[str, Any]:
     """Persist source metadata to a lock-file entry."""
     repo_data["source"] = source.kind
     repo_data["ref"] = source.ref
@@ -224,7 +224,7 @@ def apply_source(repo_data: dict, source: RepoSource) -> dict:
     return repo_data
 
 
-def get_sync_source(repo: str, repo_data: dict) -> RepoSource:
+def get_sync_source(repo: str, repo_data: dict[str, Any]) -> RepoSource:
     """Build the exact source to use during sync from lock metadata."""
     normalized = normalize_repo_data(repo_data)
     ref = normalized.get("ref") or normalized.get("tag") or normalized.get("branch") or "main"
@@ -446,7 +446,7 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
             continue
 
         previous_label = repo_data.get("tag") or repo_data.get("branch") or repo_data.get("commit", "unknown")
-        next_label = source.ref if source.kind == "release" else f"{source.ref} ({source.commit[:7]})"
+        next_label = source.ref if source.kind == "release" or not source.commit else f"{source.ref} ({source.commit[:7]})"
         console.print(f"  Updating from {previous_label} to [cyan]{next_label}[/cyan]...", highlight=False)
         zip_path = download_release(r, source.cache_key, source.zip_url)
         
