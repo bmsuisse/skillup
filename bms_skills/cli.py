@@ -64,6 +64,14 @@ class RepoSource:
     def cache_key(self) -> str:
         return self.commit or self.ref
 
+
+def format_source_label(source: RepoSource) -> str:
+    """Format a human-readable source label for output."""
+    if source.kind == "release" or not source.commit:
+        return source.ref
+    short_commit = source.commit[: min(len(source.commit), 7)]
+    return f"{source.ref} ({short_commit})"
+
 def ensure_dirs():
     """Ensure all required directories exist."""
     settings.skills_dir_agents.mkdir(parents=True, exist_ok=True)
@@ -441,12 +449,11 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
         current_version = repo_data.get("commit") or repo_data.get("tag") or repo_data.get("branch")
         new_version = source.commit or source.ref
         if current_version == new_version:
-            label = f"{source.ref} ({source.commit[:7]})" if source.kind == "branch" and source.commit else source.ref
-            console.print(f"  [green]{r} is already up-to-date ({label}).[/green]")
+            console.print(f"  [green]{r} is already up-to-date ({format_source_label(source)}).[/green]")
             continue
 
         previous_label = repo_data.get("tag") or repo_data.get("branch") or repo_data.get("commit", "unknown")
-        next_label = source.ref if source.kind == "release" or not source.commit else f"{source.ref} ({source.commit[:7]})"
+        next_label = format_source_label(source)
         console.print(f"  Updating from {previous_label} to [cyan]{next_label}[/cyan]...", highlight=False)
         zip_path = download_release(r, source.cache_key, source.zip_url)
         
@@ -472,8 +479,7 @@ def sync():
     for repo, repo_data in lock["repos"].items():
         source = get_sync_source(repo, repo_data)
         skills = repo_data["skills"]
-        label = source.ref if not source.commit else f"{source.ref} ({source.commit[:7]})"
-        console.print(f"Syncing [cyan]{repo}[/cyan] at [green]{label}[/green]...")
+        console.print(f"Syncing [cyan]{repo}[/cyan] at [green]{format_source_label(source)}[/green]...")
         
         try:
             zip_path = download_release(repo, source.cache_key, source.zip_url)
