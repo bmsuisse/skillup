@@ -493,5 +493,65 @@ def sync():
     console.print("[green]Synchronization complete![/green]")
 
 
+@app.command()
+def migrate(
+    input_file: Optional[Path] = typer.Argument(None, help="Path to skills-lock.json (defaults to .claude/skills-lock.json)"),
+):
+    """Migrate a Claude Code skills-lock.json to the bms-skills lock format."""
+    if input_file is None:
+        input_file = settings.base_dir / ".claude" / "skills-lock.json"
+
+    if not input_file.exists():
+        console.print(f"[red]File not found: {input_file}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        data = json.loads(input_file.read_text())
+    except Exception as e:
+        console.print(f"[red]Failed to parse {input_file}:[/red] {e}")
+        raise typer.Exit(1)
+
+    skills_map: dict[str, Any] = data.get("skills", {})
+    if not skills_map:
+        console.print("[yellow]No skills found in the input file.[/yellow]")
+        return
+
+    repos: dict[str, list[str]] = {}
+    for skill_name, skill_data in skills_map.items():
+        if skill_data.get("sourceType") != "github":
+            console.print(f"[yellow]Skipping {skill_name}: unsupported sourceType '{skill_data.get('sourceType')}'[/yellow]")
+            continue
+        repo = skill_data["source"]
+        repos.setdefault(repo, []).append(skill_name)
+
+    if not repos:
+        console.print("[yellow]No GitHub skills found to migrate.[/yellow]")
+        return
+
+    lock = load_lock()
+
+    for repo, skill_names in repos.items():
+        console.print(f"Resolving [cyan]{repo}[/cyan]...")
+        try:
+            source = get_repo_source(repo)
+        except Exception as e:
+            console.print(f"[red]Error fetching source info for {repo}:[/red] {e}")
+            continue
+
+        repo_data = lock["repos"].get(repo, {"skills": []})
+        existing = set(repo_data.get("skills", []))
+        for skill in skill_names:
+            if skill not in existing:
+                repo_data.setdefault("skills", []).append(skill)
+
+        repo_data = apply_source(repo_data, source)
+        lock["repos"][repo] = repo_data
+        console.print(f"  [green]Migrated {len(skill_names)} skill(s) at {format_source_label(source)}[/green]")
+
+    ensure_dirs()
+    save_lock(lock)
+    console.print(f"[green]Migration complete! Lock file saved to {settings.lock_file}[/green]")
+
+
 if __name__ == "__main__":
     app()
