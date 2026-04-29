@@ -63,6 +63,19 @@ Install all skills as defined in the lock file using the pinned commit SHAs (use
 bms-skills sync
 ```
 
+### 5. Migrate from NPX Skills CLI
+If you already have a `skills-lock.json` in your repository root, you can import it into the bms-skills lock format. The latest release or branch commit is resolved from GitHub at migration time.
+
+```bash
+bms-skills migrate
+```
+
+A custom path can be provided if the file is elsewhere:
+
+```bash
+bms-skills migrate path/to/skills-lock.json
+```
+
 ## Skill Definition
 A folder is recognized as a valid skill if it resides within a `skills/` directory at the repository root and contains a `SKILL.md` file.
 
