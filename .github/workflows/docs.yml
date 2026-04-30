@@ -25,6 +25,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
