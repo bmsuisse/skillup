@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>A CLI to install, version, and sync skills for your AI agents.</strong><br/>
+  <strong>Skill your agents up.</strong><br/>
+  A minimal CLI to install, version, and sync skills for your AI agents.<br/>
   Local-first · GitHub-backed · Works with Claude, Gemini, and more.
 </p>
 
