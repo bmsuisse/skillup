@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* ── Brand tokens ─────────────────────────────── */
+:root {
+  --su-ink:        #0a0a0a;
+  --su-ink-2:      #141414;
+  --su-ink-3:      #1a1a1a;
+  --su-ink-4:      #262626;
+  --su-paper:      #fafaf9;
+  --su-bone:       #f5f5f4;
+  --su-line:       #e7e5e4;
+  --su-mute:       #78716c;
+  --su-green:      #00d26a;
+  --su-green-dark: #00a854;
+  --su-amber:      #fbbf24;
+  --su-cyan:       #22d3ee;
+}
+
+/* ── Typography ───────────────────────────────── */
+body,
+.md-typeset {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+code,
+pre,
+kbd,
+.md-typeset code,
+.md-typeset pre {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+/* tight tracking on headings — matches brand */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ── Header — always ink ──────────────────────── */
+.md-header {
+  background-color: var(--su-ink) !important;
+  border-bottom: 1px solid var(--su-ink-4);
+  box-shadow: none;
+}
+
+.md-header__title {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* "up" green accent in site title */
+.md-header__title::after {
+  content: '';
+}
+
+/* ── Dark mode (slate scheme) ─────────────────── */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color:           var(--su-ink);
+  --md-default-bg-color--light:    var(--su-ink-2);
+  --md-default-fg-color:           #e5e5e5;
+  --md-default-fg-color--light:    #a3a3a3;
+  --md-default-fg-color--lighter:  #737373;
+  --md-default-fg-color--lightest: #404040;
+  --md-code-bg-color:              var(--su-ink-3);
+  --md-code-fg-color:              #e5e5e5;
+  --md-typeset-a-color:            var(--su-green);
+  --md-accent-fg-color:            var(--su-green);
+  --md-primary-fg-color:           var(--su-green);
+}
+
+/* nav sidebar in dark mode */
+[data-md-color-scheme="slate"] .md-sidebar {
+  background-color: var(--su-ink-2);
+}
+
+[data-md-color-scheme="slate"] .md-nav__link--active,
+[data-md-color-scheme="slate"] .md-nav__link:hover {
+  color: var(--su-green) !important;
+}
+
+/* ── Light mode (default scheme) ─────────────── */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color:  var(--su-paper);
+  --md-code-bg-color:     var(--su-bone);
+  --md-typeset-a-color:   var(--su-green-dark);
+  --md-accent-fg-color:   var(--su-green-dark);
+  --md-primary-fg-color:  var(--su-green-dark);
+}
+
+[data-md-color-scheme="default"] .md-nav__link--active,
+[data-md-color-scheme="default"] .md-nav__link:hover {
+  color: var(--su-green-dark) !important;
+}
+
+/* ── Code blocks — terminal feel ─────────────── */
+.md-typeset .highlight {
+  border-radius: 4px;
+  border: 1px solid var(--su-ink-4);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight {
+  background-color: var(--su-ink-3) !important;
+}
+
+/* shell prompt color */
+[data-md-color-scheme="slate"] .md-typeset .highlight .gp {
+  color: #525252;
+}
+
+/* ── Inline code ──────────────────────────────── */
+[data-md-color-scheme="slate"] .md-typeset code:not(.highlight code) {
+  background-color: var(--su-ink-3);
+  border: 1px solid var(--su-ink-4);
+  color: var(--su-green);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+/* ── Admonition / callout accents ────────────── */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 4px;
+  border-left-width: 3px;
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  border-left-color: var(--su-cyan);
+}
+
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary {
+  border-left-color: var(--su-green);
+}
+
+.md-typeset .warning > .admonition-title,
+.md-typeset .warning > summary {
+  border-left-color: var(--su-amber);
+}
+
+/* ── Tables ───────────────────────────────────── */
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  background-color: var(--su-ink-3);
+  color: var(--su-green);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) td {
+  border-color: var(--su-ink-4);
+}
+
+/* ── Footer ───────────────────────────────────── */
+.md-footer {
+  background-color: var(--su-ink) !important;
+  border-top: 1px solid var(--su-ink-4);
+}
+
+.md-footer-meta {
+  background-color: var(--su-ink) !important;
+}
+
+/* ── Scrollbar (dark) ─────────────────────────── */
+[data-md-color-scheme="slate"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-md-color-scheme="slate"] ::-webkit-scrollbar-track {
+  background: var(--su-ink-2);
+}
+
+[data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb {
+  background: var(--su-ink-4);
+  border-radius: 3px;
+}
+
+[data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb:hover {
+  background: #404040;
+}

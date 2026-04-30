@@ -1,19 +1,28 @@
-# skillup
+<p align="center">
+  <img src="assets/logo-wordmark.svg" alt="skillup" height="72" />
+</p>
 
-A minimal, user-friendly Python CLI to manage agent skills from GitHub releases or branches. It installs skills to both `~/.agents/skills` and `~/.claude/skills` for seamless integration across platforms.
+<p align="center">
+  <strong>A CLI to install, version, and sync skills for your AI agents.</strong><br/>
+  Local-first · GitHub-backed · Works with Claude, Gemini, and more.
+</p>
+
+<p align="center">
+  <code>pip install skillup</code> &nbsp;·&nbsp; <code>uv tool install skillup</code>
+</p>
+
+---
 
 ## Features
 
--   **Interactive Installation:** Select specific skills to add from any GitHub repository.
--   **Multi-Repo Support:** Manage skills from multiple repositories independently.
--   **Lock File State:** Tracks installed sources (release tags or branches), pinned commit SHAs, and skills in `~/.agents/skills.lock.json` for reproducibility.
--   **Automated Updates:** Easily upgrade all or specific repositories to their latest GitHub release or tracked branch head.
--   **Smart Caching:** Downloads are cached in a temporary directory (`TEMP` or `/tmp`) to avoid redundant network usage. Can be overridden with `SKILLUP_CACHE_DIR`.
--   **GitHub CLI Integration:** Uses the `gh` tool for fast downloads if available, with a reliable `requests` fallback.
+- **Interactive install** — pick skills from any GitHub repo release
+- **Multi-repo** — manage skills from multiple sources independently
+- **Lock file** — pins commit SHAs for reproducible installs (`~/.agents/skills.lock.json`)
+- **Auto-update** — upgrade all or specific repos to their latest release or branch head
+- **Smart cache** — skips redundant downloads; override with `SKILLUP_CACHE_DIR`
+- **gh integration** — uses `gh` CLI when available, falls back to `requests`
 
 ## Installation
-
-Install using `pip` or `uv`:
 
 ```bash
 pip install skillup
@@ -23,79 +32,59 @@ uv tool install skillup
 
 ## Usage
 
-### 1. Add Skills
-Interactively select skills to add from a GitHub repository's latest release:
+### Add skills
 
 ```bash
 skillup add google/gemini-cli-skills
 ```
 
-If a repository has no releases, the CLI automatically falls back to the `main` branch. You can also install directly from a branch:
+No releases? Falls back to `main` automatically. Pin a branch explicitly:
 
 ```bash
 skillup add anthropics/skills --branch main --skill pdf
 ```
 
-### 2. Remove Skills
-Interactively select installed skills to remove from your system:
+### Remove skills
 
 ```bash
 skillup remove
 ```
 
-### 3. Update Skills
-Update all installed skills to their latest tracked versions:
+### Update skills
 
 ```bash
-skillup update
+skillup update                              # all repos
+skillup update --repo google/gemini-cli-skills  # one repo
 ```
 
-Or update a specific repository:
-
-```bash
-skillup update --repo google/gemini-cli-skills
-```
-
-### 4. Sync Skills
-Install all skills as defined in the lock file using the pinned commit SHAs (useful for setting up a new machine):
+### Sync (restore from lock file)
 
 ```bash
 skillup sync
 ```
 
-### 5. Migrate from NPX Skills CLI
-If you already have a `skills-lock.json` in your repository root, you can import it into the skillup lock format. The latest release or branch commit is resolved from GitHub at migration time.
+Installs skills at the exact pinned SHAs from the lock file — useful for new machines.
+
+### Migrate from NPX skills CLI
 
 ```bash
-skillup migrate
-```
-
-A custom path can be provided if the file is elsewhere:
-
-```bash
+skillup migrate                       # reads skills-lock.json from repo root
 skillup migrate path/to/skills-lock.json
 ```
 
-## Skill Definition
-A folder is recognized as a valid skill if it resides within a `skills/` directory at the repository root and contains a `SKILL.md` file.
+## Skill definition
+
+A folder is recognized as a skill when it lives inside a `skills/` directory at the repo root and contains a `SKILL.md` file.
 
 ## Development
 
-This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
-
 ```bash
-# Install dependencies
-uv sync
-
-# Run locally
+uv sync          # install deps
 uv run skillup --help
-
-# Run tests
 uv run pytest
-
-# Type check
 uv run pyright skillup
 ```
 
 ## License
+
 MIT
