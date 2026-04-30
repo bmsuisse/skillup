@@ -83,15 +83,57 @@ def add(
     console.print(f"[green]Skills from {repo} installed successfully![/green]")
 
 
+def _remove_skill(lock: dict, repo: str, skill: str) -> None:
+    """Remove a single skill file and update the lock in-place."""
+    console.print(f"Removing [red]{skill}[/red] from {repo}...")
+    for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
+        dest = target_dir / skill
+        if dest.exists():
+            shutil.rmtree(dest)
+    lock["repos"][repo]["skills"].remove(skill)
+    if not lock["repos"][repo]["skills"]:
+        del lock["repos"][repo]
+
+
 @app.command()
-def remove():
-    """Interactively remove installed skills across all repositories."""
+def remove(
+    repo: Optional[str] = typer.Option(None, "--repo", help="Repository to remove skills from (owner/repo)"),
+    skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to remove (non-interactive)"),
+):
+    """Remove installed skills. Optionally specify --repo and/or --skill for non-interactive removal."""
     lock = load_lock()
 
+    if repo:
+        if repo not in lock["repos"]:
+            console.print(f"[red]Repository {repo} is not tracked.[/red]")
+            raise typer.Exit(1)
+
+        if skills:
+            # Remove specific skills from the given repo
+            repo_skills = lock["repos"][repo]["skills"]
+            invalid = [s for s in skills if s not in repo_skills]
+            if invalid:
+                console.print(f"[yellow]Warning: Skills not found in {repo}: {', '.join(invalid)}[/yellow]")
+            to_remove = [s for s in skills if s in repo_skills]
+            if not to_remove:
+                console.print("No matching skills to remove.")
+                return
+            for skill in to_remove:
+                _remove_skill(lock, repo, skill)
+        else:
+            # Remove all skills from the given repo
+            for skill in list(lock["repos"][repo]["skills"]):
+                _remove_skill(lock, repo, skill)
+
+        save_lock(lock)
+        console.print("[green]Skills removed successfully![/green]")
+        return
+
+    # Interactive mode
     all_installed = []
-    for repo, data in lock["repos"].items():
+    for repo_name, data in lock["repos"].items():
         for skill in data["skills"]:
-            all_installed.append(f"{repo}: {skill}")
+            all_installed.append(f"{repo_name}: {skill}")
 
     if not all_installed:
         console.print("[yellow]No skills installed.[/yellow]")
@@ -107,17 +149,8 @@ def remove():
         return
 
     for item in selected:
-        repo, skill = item.split(": ", 1)
-        console.print(f"Removing [red]{skill}[/red] from {repo}...")
-        for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
-            dest = target_dir / skill
-            if dest.exists():
-                import shutil
-                shutil.rmtree(dest)
-
-        lock["repos"][repo]["skills"].remove(skill)
-        if not lock["repos"][repo]["skills"]:
-            del lock["repos"][repo]
+        repo_name, skill = item.split(": ", 1)
+        _remove_skill(lock, repo_name, skill)
 
     save_lock(lock)
     console.print("[green]Skills removed successfully![/green]")
