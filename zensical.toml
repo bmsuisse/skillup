@@ -1,0 +1,63 @@
+[project]
+site_name = "skillup"
+site_url = "https://bmsuisse.github.io/skillup"
+site_description = "Install, version, and sync skills for your AI agents."
+site_author = "Dominik Peter"
+repo_url = "https://github.com/bmsuisse/skillup"
+repo_name = "bmsuisse/skillup"
+extra_css = ["assets/extra.css"]
+
+[project.theme]
+variant = "modern"
+logo = "assets/logo.svg"
+favicon = "assets/logo.svg"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "green"
+accent = "light-green"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "green"
+accent = "light-green"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to dark mode"
+
+[project.extra]
+social = [
+  { icon = "fontawesome/brands/github", link = "https://github.com/bmsuisse/skillup" },
+  { icon = "fontawesome/brands/python", link = "https://pypi.org/project/skillup/" },
+]
+
+[project.markdown_extensions]
+admonition = {}
+md_in_html = {}
+attr_list = {}
+"pymdownx.details" = {}
+"pymdownx.superfences" = {}
+"pymdownx.highlight" = { anchor_linenums = true, line_spans = "__span", pygments_lang_class = true }
+"pymdownx.inlinehilite" = {}
+"pymdownx.snippets" = {}
+"pymdownx.tabbed" = { alternate_style = true }
+
+[[project.nav]]
+"Home" = "index.md"
+
+[[project.nav]]
+"Quick Start" = "quickstart.md"
+
+[[project.nav]]
+Guide = [
+    { "Commands" = "commands.md" },
+    { "Skill Definition" = "skill-definition.md" },
+    { "Lock File" = "lock-file.md" },
+    { "Development" = "development.md" },
+]
+
+[[project.nav]]
+Reference = [
+    { "Changelog" = "changelog.md" },
+]
