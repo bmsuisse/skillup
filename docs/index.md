@@ -1,6 +1,6 @@
 # skillup
 
-**Install, version, and sync skills for your AI agents.**
+**Skill your AI agents up.**
 
 Give Claude, Gemini, or any agent new capabilities in seconds — pull from any GitHub repo, pin exact versions, and reproduce your setup on any machine.
 

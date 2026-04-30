@@ -1,7 +1,7 @@
 [project]
 site_name = "skillup"
 site_url = "https://bmsuisse.github.io/skillup"
-site_description = "Install, version, and sync skills for your AI agents."
+site_description = "Skill your AI agents up."
 site_author = "Dominik Peter"
 repo_url = "https://github.com/bmsuisse/skillup"
 repo_name = "bmsuisse/skillup"
