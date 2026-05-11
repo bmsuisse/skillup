@@ -42,8 +42,9 @@ def get_skills_in_zip(zip_path: Path) -> List[str]:
     with zipfile.ZipFile(zip_path, "r") as z:
         for name in z.namelist():
             parts = Path(name).parts
-            if len(parts) >= 4 and parts[1] == "skills" and parts[-1].upper() == "SKILL.MD":
-                skills.add(parts[2])
+            if len(parts) >= 2 and parts[-1].upper() == "SKILL.MD":
+                # skill name is the immediate parent folder of SKILL.md
+                skills.add(parts[-2])
     return sorted(list(skills))
 
 
@@ -52,8 +53,13 @@ def install_skill(skill_name: str, zip_path: Path) -> None:
         skill_prefix = ""
         for name in z.namelist():
             parts = Path(name).parts
-            if len(parts) >= 3 and parts[1] == "skills" and parts[2] == skill_name:
-                skill_prefix = "/".join(parts[:3]) + "/"
+            # Locate SKILL.md in a folder named skill_name anywhere in the zip
+            if (
+                len(parts) >= 2
+                and parts[-1].upper() == "SKILL.MD"
+                and parts[-2] == skill_name
+            ):
+                skill_prefix = "/".join(parts[:-1]) + "/"
                 break
 
         if not skill_prefix:
