@@ -50,24 +50,24 @@ def test_get_skills_flat(tmp_path):
 
 
 def test_get_skills_nested(tmp_path):
-    """Nested skills (skills/<category>/<name>/SKILL.md) are discovered correctly."""
+    """Nested skills (skills/<category>/<name>/SKILL.md) use just the immediate parent as skill name."""
     zip_path = _make_zip(tmp_path, [
         "owner-repo-abc123/skills/engineering/diagnose/SKILL.md",
         "owner-repo-abc123/skills/engineering/tdd/SKILL.md",
         "owner-repo-abc123/skills/misc/summarize/SKILL.md",
     ])
     skills = get_skills_in_zip(zip_path)
-    assert skills == ["engineering/diagnose", "engineering/tdd", "misc/summarize"]
+    assert skills == ["diagnose", "summarize", "tdd"]
 
 
 def test_get_skills_mixed(tmp_path):
-    """Flat and nested skills can coexist."""
+    """Flat and nested skills can coexist; skill name is always the immediate parent folder."""
     zip_path = _make_zip(tmp_path, [
         "owner-repo-abc123/skills/pdf/SKILL.md",
         "owner-repo-abc123/skills/engineering/tdd/SKILL.md",
     ])
     skills = get_skills_in_zip(zip_path)
-    assert skills == ["engineering/tdd", "pdf"]
+    assert skills == ["pdf", "tdd"]
 
 
 def test_get_skills_ignores_no_skill_md(tmp_path):
@@ -111,7 +111,7 @@ def test_install_flat_skill(tmp_path, temp_dirs):
 
 
 def test_install_nested_skill(tmp_path, temp_dirs):
-    """A nested skill (category/name) is installed to the correct subdirectory."""
+    """A skill nested under a category subfolder is installed using just the skill folder name."""
     zip_path = _make_zip(tmp_path, [
         "owner-repo-abc123/skills/engineering/tdd/SKILL.md",
         "owner-repo-abc123/skills/engineering/tdd/guide.md",
@@ -120,11 +120,11 @@ def test_install_nested_skill(tmp_path, temp_dirs):
     settings.skills_dir_agents.mkdir(parents=True, exist_ok=True)
     settings.skills_dir_claude.mkdir(parents=True, exist_ok=True)
 
-    install_skill("engineering/tdd", zip_path)
+    install_skill("tdd", zip_path)
 
-    assert (settings.skills_dir_agents / "engineering" / "tdd" / "SKILL.md").exists()
-    assert (settings.skills_dir_agents / "engineering" / "tdd" / "guide.md").exists()
-    assert (settings.skills_dir_claude / "engineering" / "tdd" / "SKILL.md").exists()
+    assert (settings.skills_dir_agents / "tdd" / "SKILL.md").exists()
+    assert (settings.skills_dir_agents / "tdd" / "guide.md").exists()
+    assert (settings.skills_dir_claude / "tdd" / "SKILL.md").exists()
 
 
 def test_install_skill_unknown_does_nothing(tmp_path, temp_dirs):
