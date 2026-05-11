@@ -80,6 +80,16 @@ def test_get_skills_ignores_no_skill_md(tmp_path):
     assert skills == ["real"]
 
 
+def test_get_skills_at_zip_root(tmp_path):
+    """Skills at the zip root level (no containing folder) are also discovered."""
+    zip_path = _make_zip(tmp_path, [
+        "mything/SKILL.md",
+        "another/SKILL.md",
+    ])
+    skills = get_skills_in_zip(zip_path)
+    assert skills == ["another", "mything"]
+
+
 def test_get_skills_case_insensitive(tmp_path):
     """SKILL.MD is matched case-insensitively."""
     zip_path = _make_zip(tmp_path, [
