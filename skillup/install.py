@@ -29,7 +29,7 @@ def download_release(repo: str, version: str, url: str) -> Path:
     ) as progress:
         progress.add_task(description=f"Downloading {repo} {version}...", total=None)
 
-        response = requests.get(url, headers=get_github_headers(), stream=True)
+        response = requests.get(url, headers=get_github_headers(), stream=True, verify=settings.tls_verify)
         response.raise_for_status()
         with open(cache_path, "wb") as f:
             shutil.copyfileobj(response.raw, f)

@@ -45,7 +45,7 @@ def get_github_headers() -> dict[str, str]:
 
 def get_latest_release(repo: str) -> tuple[str, str]:
     url = f"https://api.github.com/repos/{repo}/releases/latest"
-    response = requests.get(url, headers=get_github_headers())
+    response = requests.get(url, headers=get_github_headers(), verify=settings.tls_verify)
     response.raise_for_status()
     data = response.json()
     return data["tag_name"], data["zipball_url"]
@@ -53,7 +53,7 @@ def get_latest_release(repo: str) -> tuple[str, str]:
 
 def get_commit_sha(repo: str, ref: str) -> str:
     url = f"https://api.github.com/repos/{repo}/commits/{ref}"
-    response = requests.get(url, headers=get_github_headers())
+    response = requests.get(url, headers=get_github_headers(), verify=settings.tls_verify)
     response.raise_for_status()
     data = response.json()
     return data["sha"]
