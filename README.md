@@ -48,7 +48,9 @@ skillup add anthropics/skills --branch main --skill pdf
 ### Remove skills
 
 ```bash
-skillup remove
+skillup remove                                        # interactive
+skillup remove --repo owner/repo                      # remove all skills from a repo
+skillup remove --repo owner/repo --skill pdf          # remove a specific skill
 ```
 
 ### Update skills
