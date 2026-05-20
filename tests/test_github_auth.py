@@ -9,6 +9,7 @@ from skillup.github import (
     get_repo_source,
 )
 from skillup.install import download_release
+from skillup.settings import settings
 
 def test_get_github_token_from_env():
     with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token"}):
@@ -40,6 +41,7 @@ def test_get_github_token_not_found():
 @patch("skillup.github.get_github_token")
 @patch("requests.get")
 def test_get_latest_release_uses_token(mock_get, mock_token):
+    settings.use_system_certs = False
     mock_token.return_value = "test_token"
     mock_get.return_value.json.return_value = {"tag_name": "v1.0.0", "zipball_url": "url"}
     mock_get.return_value.raise_for_status = MagicMock()
@@ -48,10 +50,12 @@ def test_get_latest_release_uses_token(mock_get, mock_token):
 
     args, kwargs = mock_get.call_args
     assert kwargs["headers"]["Authorization"] == "token test_token"
+    assert kwargs["verify"] is True
 
 @patch("skillup.github.get_github_token")
 @patch("requests.get")
 def test_get_commit_sha_uses_token(mock_get, mock_token):
+    settings.use_system_certs = False
     mock_token.return_value = "test_token"
     mock_get.return_value.json.return_value = {"sha": "abc123"}
     mock_get.return_value.raise_for_status = MagicMock()
@@ -60,6 +64,24 @@ def test_get_commit_sha_uses_token(mock_get, mock_token):
 
     args, kwargs = mock_get.call_args
     assert kwargs["headers"]["Authorization"] == "token test_token"
+    assert kwargs["verify"] is True
+
+
+@patch("skillup.github.get_github_token")
+@patch("requests.get")
+def test_get_latest_release_uses_system_certs(mock_get, mock_token):
+    settings.use_system_certs = True
+    with patch("skillup.settings.ssl.get_default_verify_paths") as mock_verify_paths:
+        mock_verify_paths.return_value = MagicMock(cafile="/etc/ssl/certs/custom.pem", capath=None)
+        mock_token.return_value = "test_token"
+        mock_get.return_value.json.return_value = {"tag_name": "v1.0.0", "zipball_url": "url"}
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        get_latest_release("owner/repo")
+
+    args, kwargs = mock_get.call_args
+    assert kwargs["verify"] == "/etc/ssl/certs/custom.pem"
+    settings.use_system_certs = False
 
 @patch("skillup.github.get_commit_sha")
 @patch("skillup.github.get_latest_release")
@@ -80,6 +102,7 @@ def test_get_repo_source_falls_back_to_main_branch(mock_latest, mock_commit):
 @patch("shutil.copyfileobj")
 @patch("builtins.open", new_callable=MagicMock)
 def test_download_release_uses_token(mock_open, mock_copy, mock_get, mock_token, tmp_path):
+    settings.use_system_certs = False
     mock_token.return_value = "test_token"
     mock_get.return_value.raw = MagicMock()
     mock_get.return_value.raise_for_status = MagicMock()
@@ -90,3 +113,4 @@ def test_download_release_uses_token(mock_open, mock_copy, mock_get, mock_token,
 
     args, kwargs = mock_get.call_args
     assert kwargs["headers"]["Authorization"] == "token test_token"
+    assert kwargs["verify"] is True

@@ -19,9 +19,11 @@ console = Console()
 @app.callback()
 def main(
     is_global: bool = typer.Option(False, "--global", "-g", help="Use home directory instead of current directory"),
+    system_certs: bool = typer.Option(False, "--system-certs", help="Use system certificate store for HTTPS requests"),
 ):
     """Minimal CLI to manage agent skills from GitHub releases or branches."""
     settings.is_global = is_global
+    settings.use_system_certs = system_certs
 
 
 @app.command()

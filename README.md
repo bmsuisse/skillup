@@ -39,6 +39,12 @@ uv tool install skillup
 skillup add google/gemini-cli-skills
 ```
 
+Need to use your OS trust store for TLS?
+
+```bash
+skillup --system-certs add google/gemini-cli-skills
+```
+
 No releases? Falls back to `main` automatically. Pin a branch explicitly:
 
 ```bash

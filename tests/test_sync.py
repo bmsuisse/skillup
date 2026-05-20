@@ -26,6 +26,7 @@ def temp_dirs(tmp_path):
          patch("pathlib.Path.cwd", return_value=fake_cwd), \
          patch("os.getenv", side_effect=lambda key, default=None: str(fake_temp) if key == "TEMP" else default):
         settings.is_global = False
+        settings.use_system_certs = False
         yield fake_home, fake_cwd
 
 

@@ -8,6 +8,12 @@ All commands accept a `--global` / `-g` flag that switches the lock file and bas
 skillup --global add myorg/skills
 ```
 
+All commands also accept `--system-certs` to use the system certificate store for HTTPS requests.
+
+```bash
+skillup --system-certs add myorg/skills
+```
+
 ---
 
 ## `add`

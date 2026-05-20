@@ -1,4 +1,5 @@
 import os
+import ssl
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -26,6 +27,7 @@ def format_source_label(source: RepoSource) -> str:
 @dataclass
 class Settings:
     is_global: bool = False
+    use_system_certs: bool = False
 
     @property
     def base_dir(self) -> Path:
@@ -53,6 +55,17 @@ class Settings:
     @property
     def lock_file(self) -> Path:
         return self.agents_dir / "skills.lock.json"
+
+    @property
+    def tls_verify(self) -> bool | str:
+        if not self.use_system_certs:
+            return True
+        verify_paths = ssl.get_default_verify_paths()
+        if verify_paths.cafile:
+            return verify_paths.cafile
+        if verify_paths.capath:
+            return verify_paths.capath
+        return True
 
 
 settings = Settings()
