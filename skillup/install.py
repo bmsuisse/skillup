@@ -3,10 +3,10 @@ import zipfile
 from pathlib import Path
 from typing import List
 
-import requests
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from .github import get_github_headers
+from .http import session
 from .settings import settings
 
 
@@ -29,7 +29,7 @@ def download_release(repo: str, version: str, url: str) -> Path:
     ) as progress:
         progress.add_task(description=f"Downloading {repo} {version}...", total=None)
 
-        response = requests.get(url, headers=get_github_headers(), stream=True)
+        response = session().get(url, headers=get_github_headers(), stream=True)
         response.raise_for_status()
         with open(cache_path, "wb") as f:
             shutil.copyfileobj(response.raw, f)
