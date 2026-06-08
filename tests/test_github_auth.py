@@ -38,27 +38,32 @@ def test_get_github_token_not_found():
         assert "Warning" in mock_print.call_args[0][0]
 
 @patch("skillup.github.get_github_token")
-@patch("requests.get")
-def test_get_latest_release_uses_token(mock_get, mock_token):
+def test_get_latest_release_uses_token(mock_token):
     mock_token.return_value = "test_token"
-    mock_get.return_value.json.return_value = {"tag_name": "v1.0.0", "zipball_url": "url"}
-    mock_get.return_value.raise_for_status = MagicMock()
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"tag_name": "v1.0.0", "zipball_url": "url"}
+    mock_response.raise_for_status = MagicMock()
 
-    get_latest_release("owner/repo")
+    with patch("skillup.http._session") as mock_session:
+        mock_session.get.return_value = mock_response
+        get_latest_release("owner/repo")
+        args, kwargs = mock_session.get.call_args
 
-    args, kwargs = mock_get.call_args
     assert kwargs["headers"]["Authorization"] == "token test_token"
 
 @patch("skillup.github.get_github_token")
-@patch("requests.get")
-def test_get_commit_sha_uses_token(mock_get, mock_token):
+def test_get_commit_sha_uses_token(mock_token):
     mock_token.return_value = "test_token"
-    mock_get.return_value.json.return_value = {"sha": "abc123"}
-    mock_get.return_value.raise_for_status = MagicMock()
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"sha": "abc123"}
+    mock_response.raise_for_status = MagicMock()
 
-    assert get_commit_sha("owner/repo", "main") == "abc123"
+    with patch("skillup.http._session") as mock_session:
+        mock_session.get.return_value = mock_response
+        result = get_commit_sha("owner/repo", "main")
+        args, kwargs = mock_session.get.call_args
 
-    args, kwargs = mock_get.call_args
+    assert result == "abc123"
     assert kwargs["headers"]["Authorization"] == "token test_token"
 
 @patch("skillup.github.get_commit_sha")
@@ -76,17 +81,19 @@ def test_get_repo_source_falls_back_to_main_branch(mock_latest, mock_commit):
     assert source.zip_url == "https://api.github.com/repos/owner/repo/zipball/main-sha"
 
 @patch("skillup.github.get_github_token")
-@patch("requests.get")
 @patch("shutil.copyfileobj")
 @patch("builtins.open", new_callable=MagicMock)
-def test_download_release_uses_token(mock_open, mock_copy, mock_get, mock_token, tmp_path):
+def test_download_release_uses_token(mock_open, mock_copy, mock_token, tmp_path):
     mock_token.return_value = "test_token"
-    mock_get.return_value.raw = MagicMock()
-    mock_get.return_value.raise_for_status = MagicMock()
+    mock_response = MagicMock()
+    mock_response.raw = MagicMock()
+    mock_response.raise_for_status = MagicMock()
 
-    with patch("skillup.settings.Settings.cache_dir", new_callable=PropertyMock) as mock_cache:
+    with patch("skillup.http._session") as mock_session, \
+         patch("skillup.settings.Settings.cache_dir", new_callable=PropertyMock) as mock_cache:
+        mock_session.get.return_value = mock_response
         mock_cache.return_value = tmp_path
-        download_release("owner/repo", "v1.0.0", "url")
+        download_release("owner/repo", "v1.0.0", "https://example.com/release.zip")
+        args, kwargs = mock_session.get.call_args
 
-    args, kwargs = mock_get.call_args
     assert kwargs["headers"]["Authorization"] == "token test_token"
