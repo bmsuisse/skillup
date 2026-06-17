@@ -16,6 +16,9 @@ dependencies = [
     "truststore",
 ]
 
+[project.optional-dependencies]
+azure = ["azure-identity>=1.16"]
+
 [dependency-groups]
 dev = [
     "pyright",

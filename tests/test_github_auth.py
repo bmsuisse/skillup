@@ -7,8 +7,26 @@ from skillup.github import (
     get_github_token,
     get_latest_release,
     get_repo_source,
+    parse_github_repo,
 )
 from skillup.install import download_release
+
+
+def test_parse_github_repo_shorthand():
+    assert parse_github_repo("owner/repo") == "owner/repo"
+
+def test_parse_github_repo_full_url():
+    assert parse_github_repo("https://github.com/owner/repo") == "owner/repo"
+
+def test_parse_github_repo_git_suffix():
+    assert parse_github_repo("https://github.com/owner/repo.git") == "owner/repo"
+
+def test_parse_github_repo_www():
+    assert parse_github_repo("https://www.github.com/owner/repo") == "owner/repo"
+
+def test_parse_github_repo_unknown_url_passthrough():
+    url = "https://example.com/owner/repo"
+    assert parse_github_repo(url) == url
 
 def test_get_github_token_from_env():
     with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token"}):

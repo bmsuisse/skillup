@@ -5,11 +5,11 @@
 <p align="center">
   <strong>Skill your agents up.</strong><br/>
   A minimal CLI to install, version, and sync skills for your AI agents.<br/>
-  Local-first · GitHub-backed · Works with Claude, Gemini, and more.
+  Local-first · GitHub &amp; Azure DevOps · Works with Claude, Gemini, and more.
 </p>
 
 <p align="center">
-  <code>pip install skillup</code> &nbsp;·&nbsp; <code>uv tool install skillup</code>
+  <code>uv tool install skillup</code>
 </p>
 
 ---
@@ -22,27 +22,67 @@
 - **Auto-update** — upgrade all or specific repos to their latest release or branch head
 - **Smart cache** — skips redundant downloads; override with `SKILLUP_CACHE_DIR`
 - **gh integration** — uses `gh` CLI when available, falls back to `requests`
+- **Azure DevOps** — install skills from private Azure DevOps Git repos via `DefaultAzureCredential` or a PAT
 
 ## Installation
 
 ```bash
-pip install skillup
-# or
 uv tool install skillup
+```
+
+To use Azure DevOps sources, install the `azure` extra:
+
+```bash
+uv tool install 'skillup[azure]'
 ```
 
 ## Usage
 
-### Add skills
+### Add skills from GitHub
 
 ```bash
 skillup add google/gemini-cli-skills
 ```
 
-No releases? Falls back to `main` automatically. Pin a branch explicitly:
+No releases? Falls back to `main` automatically. Pin a branch or add specific skills non-interactively:
 
 ```bash
 skillup add anthropics/skills --branch main --skill pdf
+```
+
+Full GitHub URLs are also accepted:
+
+```bash
+skillup add https://github.com/anthropics/skills
+```
+
+### Add skills from Azure DevOps
+
+Pass the full Azure DevOps clone URL — the provider is detected automatically from the domain:
+
+```bash
+skillup add https://dev.azure.com/myorg/myproject/_git/myrepo
+skillup add https://myorg.visualstudio.com/myproject/_git/myrepo   # legacy URL format
+
+# pin a branch or add specific skills non-interactively
+skillup add https://dev.azure.com/myorg/myproject/_git/myrepo --branch develop --skill my-skill
+```
+
+Azure DevOps repos are stored in the lock file under the key `azdo:org/project/repo` and participate in the shared `update` and `sync` commands just like GitHub repos.
+
+#### Authentication
+
+Authentication is resolved in this order:
+
+1. **`AZURE_DEVOPS_TOKEN` env var** — a Personal Access Token (PAT) with *Code → Read* scope, or any valid bearer token.
+2. **`DefaultAzureCredential`** (requires the `azure` extra) — tries, in order: environment variables (`AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID`), workload identity, managed identity, Azure CLI (`az login`), Azure Developer CLI, and interactive browser login.
+
+The recommended approach for developer machines is `DefaultAzureCredential` via `az login`:
+
+```bash
+uv tool install 'skillup[azure]'
+az login
+skillup add https://dev.azure.com/myorg/myproject/_git/myrepo
 ```
 
 ### Remove skills

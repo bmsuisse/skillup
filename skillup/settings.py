@@ -10,6 +10,7 @@ class RepoSource:
     ref: str
     zip_url: str
     commit: Optional[str] = None
+    provider: str = "github"  # "github" | "azdevops"
 
     @property
     def cache_key(self) -> str:
