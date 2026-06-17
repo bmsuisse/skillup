@@ -2,18 +2,62 @@ import json
 import shutil
 from pathlib import Path
 from typing import Any, List, Optional
+from urllib.parse import urlparse
 
 import questionary
 import typer
 from rich.console import Console
 
-from .github import get_repo_source
+from .github import get_repo_source, parse_github_repo
 from .install import download_release, ensure_dirs, get_skills_in_zip, install_skill
 from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
-from .settings import format_source_label, settings
+from .settings import RepoSource, format_source_label, settings
 
 app = typer.Typer(help="Minimal CLI to manage agent skills from GitHub releases or branches.")
 console = Console()
+
+
+def _detect_provider(repo_or_url: str) -> str:
+    """Return 'azdevops' if the input is a recognised Azure DevOps URL, else 'github'."""
+    parsed = urlparse(repo_or_url)
+    if not parsed.scheme:
+        return "github"
+    host = parsed.netloc.split("@")[-1]
+    if host == "dev.azure.com" or host.endswith(".visualstudio.com"):
+        return "azdevops"
+    return "github"
+
+
+def _parse_repo_input(repo_or_url: str) -> tuple[str, str]:
+    """Return (lock_key, short_ref) for a GitHub or Azure DevOps repo input.
+
+    For GitHub: lock_key == short_ref == 'owner/repo'.
+    For Azure DevOps: lock_key == 'azdo:org/project/repo', short_ref == 'org/project/repo'.
+    """
+    provider = _detect_provider(repo_or_url)
+    if provider == "azdevops":
+        from .azdevops import parse_azdevops_repo
+
+        short_ref = parse_azdevops_repo(repo_or_url)
+        return f"azdo:{short_ref}", short_ref
+    short_ref = parse_github_repo(repo_or_url)
+    return short_ref, short_ref
+
+
+def _resolve_source(lock_key: str, short_ref: str, branch: Optional[str] = None) -> RepoSource:
+    if lock_key.startswith("azdo:"):
+        from .azdevops import get_azdevops_repo_source
+
+        return get_azdevops_repo_source(short_ref, branch)
+    return get_repo_source(short_ref, branch)
+
+
+def _download(lock_key: str, source: RepoSource) -> Path:
+    if source.provider == "azdevops":
+        from .azdevops import get_azdevops_headers
+
+        return download_release(lock_key, source.cache_key, source.zip_url, get_azdevops_headers())
+    return download_release(lock_key, source.cache_key, source.zip_url)
 
 
 @app.callback()
@@ -57,24 +101,36 @@ def config_show():
 
 @app.command()
 def add(
-    repo: str = typer.Argument(..., help="GitHub repository (owner/repo)"),
+    repo: str = typer.Argument(
+        ...,
+        help=(
+            "GitHub 'owner/repo', a full GitHub URL, or a full Azure DevOps URL "
+            "(https://dev.azure.com/… or https://org.visualstudio.com/…). "
+            "Provider is auto-detected from the URL domain; bare 'owner/repo' defaults to GitHub."
+        ),
+    ),
     skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch to install from instead of the latest release"),
 ):
-    """Add skills from a GitHub release or branch."""
+    """Add skills from a GitHub or Azure DevOps repository."""
+    lock_key, short_ref = _parse_repo_input(repo)
     lock = load_lock()
     ensure_dirs()
 
     try:
-        source = get_repo_source(repo, branch)
+        source = _resolve_source(lock_key, short_ref, branch)
     except Exception as e:
-        console.print(f"[red]Error fetching source info for {repo}:[/red] {e}")
+        console.print(f"[red]Error fetching source info for {short_ref}:[/red] {e}")
         raise typer.Exit(1)
 
-    zip_path = download_release(repo, source.cache_key, source.zip_url)
-    available_skills = get_skills_in_zip(zip_path)
+    try:
+        zip_path = _download(lock_key, source)
+    except Exception as e:
+        console.print(f"[red]Error downloading {short_ref}:[/red] {e}")
+        raise typer.Exit(1)
 
-    repo_data = normalize_repo_data(lock["repos"].get(repo, {"skills": []}))
+    available_skills = get_skills_in_zip(zip_path)
+    repo_data = normalize_repo_data(lock["repos"].get(lock_key, {"skills": []}))
     installed_skills = set(repo_data["skills"])
 
     if skills:
@@ -83,18 +139,18 @@ def add(
         already_installed = [s for s in skills if s in installed_skills]
 
         if invalid:
-            console.print(f"[yellow]Warning: Skills not found in {repo}: {', '.join(invalid)}[/yellow]")
+            console.print(f"[yellow]Warning: Skills not found in {short_ref}: {', '.join(invalid)}[/yellow]")
         if already_installed:
-            console.print(f"[blue]Note: Skills already installed from {repo}: {', '.join(already_installed)}[/blue]")
+            console.print(f"[blue]Note: Skills already installed from {short_ref}: {', '.join(already_installed)}[/blue]")
     else:
         to_show = [s for s in available_skills if s not in installed_skills]
 
         if not to_show:
-            console.print(f"[yellow]No new skills available to add from {repo}.[/yellow]")
+            console.print(f"[yellow]No new skills available to add from {short_ref}.[/yellow]")
             return
 
         selected = questionary.checkbox(
-            f"Select skills to add from {repo}:",
+            f"Select skills to add from {short_ref}:",
             choices=to_show,
         ).ask()
 
@@ -109,9 +165,9 @@ def add(
             repo_data["skills"].append(skill)
 
     repo_data = apply_source(repo_data, source)
-    lock["repos"][repo] = repo_data
+    lock["repos"][lock_key] = repo_data
     save_lock(lock)
-    console.print(f"[green]Skills from {repo} installed successfully![/green]")
+    console.print(f"[green]Skills from {short_ref} installed successfully![/green]")
 
 
 @app.command()
@@ -154,7 +210,7 @@ def remove():
 
 
 @app.command()
-def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific repository to update")):
+def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific repository to update (lock-file key)")):
     """Update installed skills to the latest tracked release or branch commit."""
     lock = load_lock()
     repos_to_update = [repo] if repo else list(lock["repos"].keys())
@@ -170,25 +226,26 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
             continue
 
         repo_data = normalize_repo_data(lock["repos"][r])
-        console.print(f"Checking updates for [cyan]{r}[/cyan]...")
+        short_ref = r[5:] if r.startswith("azdo:") else r
+        console.print(f"Checking updates for [cyan]{short_ref}[/cyan]...")
 
         try:
             tracked_branch = repo_data.get("branch") if repo_data.get("source") == "branch" else None
-            source = get_repo_source(r, tracked_branch)
+            source = _resolve_source(r, short_ref, tracked_branch)
         except Exception as e:
-            console.print(f"[red]Error fetching source info for {r}:[/red] {e}")
+            console.print(f"[red]Error fetching source info for {short_ref}:[/red] {e}")
             continue
 
         current_version = repo_data.get("commit") or repo_data.get("tag") or repo_data.get("branch")
         new_version = source.commit or source.ref
         if current_version == new_version:
-            console.print(f"  [green]{r} is already up-to-date ({format_source_label(source)}).[/green]")
+            console.print(f"  [green]{short_ref} is already up-to-date ({format_source_label(source)}).[/green]")
             continue
 
         previous_label = repo_data.get("tag") or repo_data.get("branch") or repo_data.get("commit", "unknown")
         next_label = format_source_label(source)
         console.print(f"  Updating from {previous_label} to [cyan]{next_label}[/cyan]...", highlight=False)
-        zip_path = download_release(r, source.cache_key, source.zip_url)
+        zip_path = _download(r, source)
 
         for skill in repo_data["skills"]:
             console.print(f"  Updating [cyan]{skill}[/cyan]...")
@@ -197,7 +254,7 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
         repo_data = apply_source(repo_data, source)
         lock["repos"][r] = repo_data
         save_lock(lock)
-        console.print(f"  [green]Successfully updated {r} to {next_label}![/green]")
+        console.print(f"  [green]Successfully updated {short_ref} to {next_label}![/green]")
 
 
 @app.command()
@@ -212,16 +269,17 @@ def sync():
 
     for repo, repo_data in lock["repos"].items():
         source = get_sync_source(repo, repo_data)
+        short_ref = repo[5:] if repo.startswith("azdo:") else repo
         skills = repo_data["skills"]
-        console.print(f"Syncing [cyan]{repo}[/cyan] at [green]{format_source_label(source)}[/green]...")
+        console.print(f"Syncing [cyan]{short_ref}[/cyan] at [green]{format_source_label(source)}[/green]...")
 
         try:
-            zip_path = download_release(repo, source.cache_key, source.zip_url)
+            zip_path = _download(repo, source)
             for skill in skills:
                 console.print(f"  Installing [cyan]{skill}[/cyan]...")
                 install_skill(skill, zip_path)
         except Exception as e:
-            console.print(f"[red]Error syncing {repo}:[/red] {e}")
+            console.print(f"[red]Error syncing {short_ref}:[/red] {e}")
             continue
 
     console.print("[green]Synchronization complete![/green]")

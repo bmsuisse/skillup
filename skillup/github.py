@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 from rich.console import Console
@@ -58,6 +59,17 @@ def get_commit_sha(repo: str, ref: str) -> str:
     response.raise_for_status()
     data = response.json()
     return data["sha"]
+
+
+def parse_github_repo(repo_or_url: str) -> str:
+    """Return 'owner/repo' from either a shorthand or a full GitHub URL."""
+    parsed = urlparse(repo_or_url)
+    if parsed.scheme and parsed.netloc in ("github.com", "www.github.com"):
+        path = parsed.path.strip("/").removesuffix(".git")
+        parts = path.split("/")
+        if len(parts) >= 2:
+            return f"{parts[0]}/{parts[1]}"
+    return repo_or_url
 
 
 def get_repo_source(repo: str, branch: Optional[str] = None) -> RepoSource:
