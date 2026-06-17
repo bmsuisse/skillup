@@ -124,7 +124,7 @@ def add(
     ensure_dirs()
 
     if is_local_path(repo):
-        _add_local(repo, lock, skills, search)
+        _add_local(repo, lock, skills, search, all_skills)
         return
 
     lock_key, short_ref = _parse_repo_input(repo)
@@ -199,7 +199,7 @@ def add(
     console.print(f"[green]Skills from {short_ref} installed successfully![/green]")
 
 
-def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optional[str]) -> None:
+def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optional[str], all_skills: bool = False) -> None:
     local_path = resolve_local_path(repo)
     if not local_path.is_dir():
         console.print(f"[red]Local path does not exist or is not a directory: {local_path}[/red]")
@@ -212,7 +212,12 @@ def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optio
     repo_data = lock["repos"].get(lock_key, {"skills": [], "source": "local", "path": str(local_path)})
     installed_skills = set(repo_data.get("skills", []))
 
-    if skills:
+    if all_skills:
+        selected = [s for s in available_skills if s not in installed_skills]
+        if not selected:
+            console.print(f"[yellow]No new skills available to add from {display}.[/yellow]")
+            return
+    elif skills:
         selected = [s for s in skills if s in available_skills and s not in installed_skills]
         invalid = [s for s in skills if s not in available_skills]
         already_installed = [s for s in skills if s in installed_skills]
