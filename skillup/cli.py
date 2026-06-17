@@ -114,6 +114,7 @@ def add(
     skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch to install from instead of the latest release"),
     search: Optional[str] = typer.Option(None, "--search", "-f", help="Filter skills shown in the tree (matches skill name or path, case-insensitive)"),
+    all_skills: bool = typer.Option(False, "--all-skills", help="Install all available skills non-interactively"),
 ):
     """Add skills from a GitHub or Azure DevOps repository."""
     lock_key, short_ref = _parse_repo_input(repo)
@@ -142,7 +143,12 @@ def add(
     repo_data = normalize_repo_data(lock["repos"].get(lock_key, {"skills": []}))
     installed_skills = set(repo_data["skills"])
 
-    if skills:
+    if all_skills:
+        selected = [s for s in available_skills if s not in installed_skills]
+        if not selected:
+            console.print(f"[yellow]No new skills available to add from {short_ref}.[/yellow]")
+            return
+    elif skills:
         selected = [s for s in skills if s in available_skills and s not in installed_skills]
         invalid = [s for s in skills if s not in available_skills]
         already_installed = [s for s in skills if s in installed_skills]
