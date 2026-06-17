@@ -1,7 +1,7 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 
 @dataclass
@@ -10,6 +10,7 @@ class RepoSource:
     ref: str
     zip_url: str
     commit: Optional[str] = None
+    provider: str = "github"  # "github" | "azdevops"
 
     @property
     def cache_key(self) -> str:
@@ -26,6 +27,8 @@ def format_source_label(source: RepoSource) -> str:
 @dataclass
 class Settings:
     is_global: bool = False
+    lock_file_override: Optional[Path] = None
+    target_dirs_override: Optional[List[Path]] = field(default=None)
 
     @property
     def base_dir(self) -> Path:
@@ -52,7 +55,15 @@ class Settings:
 
     @property
     def lock_file(self) -> Path:
+        if self.lock_file_override is not None:
+            return self.lock_file_override
         return self.agents_dir / "skills.lock.json"
+
+    @property
+    def target_dirs(self) -> List[Path]:
+        if self.target_dirs_override is not None:
+            return self.target_dirs_override
+        return [self.skills_dir_agents, self.skills_dir_claude]
 
 
 settings = Settings()

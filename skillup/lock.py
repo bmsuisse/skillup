@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any
 
 from .settings import RepoSource, settings
@@ -10,6 +11,11 @@ def load_lock() -> dict:
             data = json.loads(settings.lock_file.read_text())
             if "repos" not in data:
                 return {"repos": {}}
+            # Apply stored target_dirs only if not already overridden via CLI
+            if settings.target_dirs_override is None:
+                stored_dirs = data.get("config", {}).get("target_dirs")
+                if stored_dirs:
+                    settings.target_dirs_override = [Path(d) for d in stored_dirs]
             return data
         except Exception:
             return {"repos": {}}
@@ -17,10 +23,17 @@ def load_lock() -> dict:
 
 
 def save_lock(data: dict) -> None:
-    if not data.get("repos"):
+    if not data.get("repos") and not data.get("config"):
         if settings.lock_file.exists():
             settings.lock_file.unlink()
         return
+
+    if settings.target_dirs_override is not None:
+        data.setdefault("config", {})["target_dirs"] = [str(d) for d in settings.target_dirs_override]
+    elif "config" in data and "target_dirs" in data["config"]:
+        del data["config"]["target_dirs"]
+        if not data["config"]:
+            del data["config"]
 
     settings.lock_file.parent.mkdir(parents=True, exist_ok=True)
     settings.lock_file.write_text(json.dumps(data, indent=2))
@@ -72,6 +85,11 @@ def apply_source(repo_data: dict[str, Any], source: RepoSource) -> dict[str, Any
 
 
 def get_sync_source(repo: str, repo_data: dict[str, Any]) -> RepoSource:
+    if repo.startswith("azdo:"):
+        from .azdevops import get_azdevops_sync_source
+
+        return get_azdevops_sync_source(repo[5:], repo_data)
+
     normalized = normalize_repo_data(repo_data)
     ref = normalized.get("ref") or normalized.get("tag") or normalized.get("branch") or "main"
     commit = normalized.get("commit")

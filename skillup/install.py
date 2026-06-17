@@ -1,7 +1,7 @@
 import shutil
 import zipfile
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
@@ -11,16 +11,25 @@ from .settings import settings
 
 
 def ensure_dirs() -> None:
-    settings.skills_dir_agents.mkdir(parents=True, exist_ok=True)
-    settings.skills_dir_claude.mkdir(parents=True, exist_ok=True)
+    for d in settings.target_dirs:
+        d.mkdir(parents=True, exist_ok=True)
     settings.cache_dir.mkdir(parents=True, exist_ok=True)
 
 
-def download_release(repo: str, version: str, url: str) -> Path:
-    cache_path = settings.cache_dir / f"{repo.replace('/', '_')}_{version}.zip"
+def download_release(
+    repo: str,
+    version: str,
+    url: str,
+    headers: Optional[dict[str, str]] = None,
+) -> Path:
+    safe_repo = repo.replace("/", "_").replace(":", "_")
+    cache_path = settings.cache_dir / f"{safe_repo}_{version}.zip"
 
     if cache_path.exists():
         return cache_path
+
+    if headers is None:
+        headers = get_github_headers()
 
     with Progress(
         SpinnerColumn(),
@@ -29,7 +38,7 @@ def download_release(repo: str, version: str, url: str) -> Path:
     ) as progress:
         progress.add_task(description=f"Downloading {repo} {version}...", total=None)
 
-        response = session().get(url, headers=get_github_headers(), stream=True)
+        response = session().get(url, headers=headers, stream=True)
         response.raise_for_status()
         with open(cache_path, "wb") as f:
             shutil.copyfileobj(response.raw, f)
@@ -74,7 +83,7 @@ def install_skill(skill_name: str, zip_path: Path) -> None:
 
         skill_files = [f for f in z.namelist() if f.startswith(skill_prefix)]
 
-        for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
+        for target_dir in settings.target_dirs:
             dest = target_dir / skill_name
             if dest.exists():
                 shutil.rmtree(dest)
