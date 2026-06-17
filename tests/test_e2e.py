@@ -249,54 +249,61 @@ def nested_skill_zip(tmp_path):
     return zip_path
 
 
-def test_tree_choices_structure(tmp_path):
-    """_build_tree_choices produces directory nodes and leaf nodes in DFS order."""
-    from skillup.cli import _build_tree_choices, _DIR_PREFIX
+def test_tree_nodes_structure():
+    """build_flat_nodes produces directory nodes and leaf nodes in DFS order."""
+    from skillup._tree_ui import build_flat_nodes
 
     skill_paths = {
         "hammer": "tools/hammer",
         "saw": "tools/saw",
         "readme": "docs/readme",
     }
-    choices = _build_tree_choices(skill_paths)
-    values = [c.value for c in choices]
+    nodes = build_flat_nodes(skill_paths)
+    values = [n.value for n in nodes]
 
-    assert f"{_DIR_PREFIX}docs" in values
-    assert f"{_DIR_PREFIX}tools" in values
+    assert "__dir__:docs" in values
+    assert "__dir__:tools" in values
     assert "hammer" in values
     assert "saw" in values
     assert "readme" in values
 
     # directory node must appear before its children
-    tools_idx = values.index(f"{_DIR_PREFIX}tools")
+    tools_idx = values.index("__dir__:tools")
     assert values.index("hammer") > tools_idx
     assert values.index("saw") > tools_idx
 
 
-def test_resolve_dir_selection_expands_to_skills():
-    """Selecting a directory node resolves to all skills underneath it."""
-    from skillup.cli import _resolve_tree_selection, _DIR_PREFIX
+def test_toggle_dir_selects_children():
+    """Toggling a dir node checks all skills beneath it."""
+    from skillup._tree_ui import build_flat_nodes, toggle, dir_state
 
-    skill_paths = {
-        "hammer": "tools/hammer",
-        "saw": "tools/saw",
-        "readme": "docs/readme",
-    }
-    result = _resolve_tree_selection([f"{_DIR_PREFIX}tools"], skill_paths)
-    assert sorted(result) == ["hammer", "saw"]
+    skill_paths = {"hammer": "tools/hammer", "saw": "tools/saw", "readme": "docs/readme"}
+    nodes = build_flat_nodes(skill_paths)
+    tools_idx = next(i for i, n in enumerate(nodes) if n.value == "__dir__:tools")
+
+    assert dir_state(tools_idx, nodes) == "none"
+    toggle(tools_idx, nodes)
+    assert dir_state(tools_idx, nodes) == "all"
+    assert all(nodes[c].checked for c in nodes[tools_idx].children)
 
 
-def test_resolve_mixed_selection():
-    """Mix of a directory node and an individual skill deduplicates correctly."""
-    from skillup.cli import _resolve_tree_selection, _DIR_PREFIX
+def test_toggle_dir_partial_then_full():
+    """Dir shows partial state when only some children are checked; toggling again checks all."""
+    from skillup._tree_ui import build_flat_nodes, toggle, dir_state
 
-    skill_paths = {
-        "hammer": "tools/hammer",
-        "saw": "tools/saw",
-        "readme": "docs/readme",
-    }
-    result = _resolve_tree_selection([f"{_DIR_PREFIX}tools", "readme"], skill_paths)
-    assert sorted(result) == ["hammer", "readme", "saw"]
+    skill_paths = {"hammer": "tools/hammer", "saw": "tools/saw"}
+    nodes = build_flat_nodes(skill_paths)
+    tools_idx = next(i for i, n in enumerate(nodes) if n.value == "__dir__:tools")
+    hammer_idx = next(i for i, n in enumerate(nodes) if n.value == "hammer")
+
+    toggle(hammer_idx, nodes)
+    assert dir_state(tools_idx, nodes) == "some"
+
+    toggle(tools_idx, nodes)  # partial → check all
+    assert dir_state(tools_idx, nodes) == "all"
+
+    toggle(tools_idx, nodes)  # all → uncheck all
+    assert dir_state(tools_idx, nodes) == "none"
 
 
 def test_add_interactive_subtree_selection(temp_dirs, nested_skill_zip):
@@ -307,9 +314,8 @@ def test_add_interactive_subtree_selection(temp_dirs, nested_skill_zip):
     with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
          patch("skillup.github.get_commit_sha", return_value="sha1"), \
          patch("skillup.cli.download_release", return_value=nested_skill_zip), \
-         patch("questionary.checkbox") as mock_cb:
+         patch("skillup.cli.tree_checkbox", return_value=["hammer", "saw"]):
 
-        mock_cb.return_value.ask.return_value = ["__dir__:tools"]
         result = runner.invoke(app, ["add", repo])
 
     assert result.exit_code == 0

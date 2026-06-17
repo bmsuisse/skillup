@@ -5,6 +5,7 @@ from typing import Any, List, Optional
 from urllib.parse import urlparse
 
 import questionary
+import requests
 import typer
 from rich.console import Console
 
@@ -12,58 +13,10 @@ from .github import get_repo_source, parse_github_repo
 from .install import download_release, ensure_dirs, get_skill_paths, install_skill
 from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
 from .settings import RepoSource, format_source_label, settings
+from ._tree_ui import tree_checkbox
 
 app = typer.Typer(help="Minimal CLI to manage agent skills from GitHub releases or branches.")
 console = Console()
-
-_DIR_PREFIX = "__dir__:"
-
-
-def _count_skills(node: dict) -> int:
-    return len(node.get("_skills", [])) + sum(
-        _count_skills(v) for k, v in node.items() if k != "_skills"
-    )
-
-
-def _flatten_tree(node: dict, prefix: str, depth: int) -> list[questionary.Choice]:
-    choices = []
-    indent = "  " * depth
-    for dir_name in sorted(k for k in node if k != "_skills"):
-        dir_path = f"{prefix}/{dir_name}" if prefix else dir_name
-        n = _count_skills(node[dir_name])
-        label = f"{'s' if n != 1 else ''}"
-        choices.append(questionary.Choice(
-            title=f"{indent}{dir_name}/  [{n} skill{label}]",
-            value=f"{_DIR_PREFIX}{dir_path}",
-        ))
-        choices.extend(_flatten_tree(node[dir_name], dir_path, depth + 1))
-    for skill in sorted(node.get("_skills", [])):
-        choices.append(questionary.Choice(title=f"{indent}{skill}", value=skill))
-    return choices
-
-
-def _build_tree_choices(skill_paths: dict[str, str]) -> list[questionary.Choice]:
-    tree: dict = {}
-    for skill_name, path in skill_paths.items():
-        parts = path.split("/")
-        node = tree
-        for part in parts[:-1]:
-            node = node.setdefault(part, {})
-        node.setdefault("_skills", []).append(skill_name)
-    return _flatten_tree(tree, "", 0)
-
-
-def _resolve_tree_selection(raw: list[str], skill_paths: dict[str, str]) -> list[str]:
-    result: set[str] = set()
-    for item in raw:
-        if item.startswith(_DIR_PREFIX):
-            dir_path = item[len(_DIR_PREFIX):]
-            for skill_name, path in skill_paths.items():
-                if path == dir_path or path.startswith(dir_path + "/"):
-                    result.add(skill_name)
-        else:
-            result.add(item)
-    return sorted(result)
 
 
 def _detect_provider(repo_or_url: str) -> str:
@@ -174,6 +127,11 @@ def add(
 
     try:
         zip_path = _download(lock_key, source)
+    except requests.HTTPError as e:
+        
+        console.print(f"[red]HTTP error downloading {short_ref}:[/red] {e}")
+        print(e.response.text)
+        raise typer.Exit(1)
     except Exception as e:
         console.print(f"[red]Error downloading {short_ref}:[/red] {e}")
         raise typer.Exit(1)
@@ -199,12 +157,10 @@ def add(
             console.print(f"[yellow]No new skills available to add from {short_ref}.[/yellow]")
             return
 
-        choices = _build_tree_choices(available_paths)
-        raw = questionary.checkbox(
-            f"Select skills to add from {short_ref} (select a directory to install all skills in it):",
-            choices=choices,
-        ).ask()
-        selected = _resolve_tree_selection(raw or [], available_paths)
+        selected = tree_checkbox(
+            f"Select skills to add from {short_ref}:",
+            available_paths,
+        )
 
     if not selected:
         console.print("No skills selected or available for installation.")
