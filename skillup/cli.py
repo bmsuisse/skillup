@@ -8,12 +8,61 @@ import typer
 from rich.console import Console
 
 from .github import get_repo_source
-from .install import download_release, ensure_dirs, get_skills_in_zip, install_skill
+from .install import download_release, ensure_dirs, get_skill_paths, install_skill
 from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
 from .settings import format_source_label, settings
 
 app = typer.Typer(help="Minimal CLI to manage agent skills from GitHub releases or branches.")
 console = Console()
+
+_DIR_PREFIX = "__dir__:"
+
+
+def _count_skills(node: dict) -> int:
+    return len(node.get("_skills", [])) + sum(
+        _count_skills(v) for k, v in node.items() if k != "_skills"
+    )
+
+
+def _flatten_tree(node: dict, prefix: str, depth: int) -> list[questionary.Choice]:
+    choices = []
+    indent = "  " * depth
+    for dir_name in sorted(k for k in node if k != "_skills"):
+        dir_path = f"{prefix}/{dir_name}" if prefix else dir_name
+        n = _count_skills(node[dir_name])
+        label = f"{'s' if n != 1 else ''}"
+        choices.append(questionary.Choice(
+            title=f"{indent}{dir_name}/  [{n} skill{label}]",
+            value=f"{_DIR_PREFIX}{dir_path}",
+        ))
+        choices.extend(_flatten_tree(node[dir_name], dir_path, depth + 1))
+    for skill in sorted(node.get("_skills", [])):
+        choices.append(questionary.Choice(title=f"{indent}{skill}", value=skill))
+    return choices
+
+
+def _build_tree_choices(skill_paths: dict[str, str]) -> list[questionary.Choice]:
+    tree: dict = {}
+    for skill_name, path in skill_paths.items():
+        parts = path.split("/")
+        node = tree
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node.setdefault("_skills", []).append(skill_name)
+    return _flatten_tree(tree, "", 0)
+
+
+def _resolve_tree_selection(raw: list[str], skill_paths: dict[str, str]) -> list[str]:
+    result: set[str] = set()
+    for item in raw:
+        if item.startswith(_DIR_PREFIX):
+            dir_path = item[len(_DIR_PREFIX):]
+            for skill_name, path in skill_paths.items():
+                if path == dir_path or path.startswith(dir_path + "/"):
+                    result.add(skill_name)
+        else:
+            result.add(item)
+    return sorted(result)
 
 
 @app.callback()
@@ -41,7 +90,8 @@ def add(
         raise typer.Exit(1)
 
     zip_path = download_release(repo, source.cache_key, source.zip_url)
-    available_skills = get_skills_in_zip(zip_path)
+    skill_paths = get_skill_paths(zip_path)
+    available_skills = sorted(skill_paths.keys())
 
     repo_data = normalize_repo_data(lock["repos"].get(repo, {"skills": []}))
     installed_skills = set(repo_data["skills"])
@@ -56,16 +106,18 @@ def add(
         if already_installed:
             console.print(f"[blue]Note: Skills already installed from {repo}: {', '.join(already_installed)}[/blue]")
     else:
-        to_show = [s for s in available_skills if s not in installed_skills]
+        available_paths = {k: v for k, v in skill_paths.items() if k not in installed_skills}
 
-        if not to_show:
+        if not available_paths:
             console.print(f"[yellow]No new skills available to add from {repo}.[/yellow]")
             return
 
-        selected = questionary.checkbox(
-            f"Select skills to add from {repo}:",
-            choices=to_show,
+        choices = _build_tree_choices(available_paths)
+        raw = questionary.checkbox(
+            f"Select skills to add from {repo} (select a directory to install all skills in it):",
+            choices=choices,
         ).ask()
+        selected = _resolve_tree_selection(raw or [], available_paths)
 
     if not selected:
         console.print("No skills selected or available for installation.")
@@ -112,7 +164,6 @@ def remove():
         for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
             dest = target_dir / skill
             if dest.exists():
-                import shutil
                 shutil.rmtree(dest)
 
         lock["repos"][repo]["skills"].remove(skill)
