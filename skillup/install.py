@@ -11,8 +11,8 @@ from .settings import settings
 
 
 def ensure_dirs() -> None:
-    settings.skills_dir_agents.mkdir(parents=True, exist_ok=True)
-    settings.skills_dir_claude.mkdir(parents=True, exist_ok=True)
+    for d in settings.target_dirs:
+        d.mkdir(parents=True, exist_ok=True)
     settings.cache_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -67,7 +67,7 @@ def install_skill(skill_name: str, zip_path: Path) -> None:
 
         skill_files = [f for f in z.namelist() if f.startswith(skill_prefix)]
 
-        for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
+        for target_dir in settings.target_dirs:
             dest = target_dir / skill_name
             if dest.exists():
                 shutil.rmtree(dest)
