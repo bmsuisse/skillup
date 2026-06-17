@@ -46,15 +46,22 @@ def download_release(
     return cache_path
 
 
-def get_skills_in_zip(zip_path: Path) -> List[str]:
-    skills = set()
+def get_skill_paths(zip_path: Path) -> dict[str, str]:
+    """Return {skill_name: repo-relative path}, e.g. {'pdf': 'skills/pdf'}."""
+    skills: dict[str, str] = {}
     with zipfile.ZipFile(zip_path, "r") as z:
         for name in z.namelist():
             parts = Path(name).parts
             if len(parts) >= 2 and parts[-1].upper() == "SKILL.MD":
-                # skill name is the immediate parent folder of SKILL.md
-                skills.add(parts[-2])
-    return sorted(list(skills))
+                skill_name = parts[-2]
+                # Strip the zip archive root (e.g. "repo-v1.0.0/") to get repo-relative path
+                path = "/".join(parts[1:-1]) if len(parts) > 2 else parts[-2]
+                skills[skill_name] = path
+    return skills
+
+
+def get_skills_in_zip(zip_path: Path) -> List[str]:
+    return sorted(get_skill_paths(zip_path).keys())
 
 
 def install_skill(skill_name: str, zip_path: Path) -> None:

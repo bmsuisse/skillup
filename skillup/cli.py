@@ -5,13 +5,15 @@ from typing import Any, List, Optional
 from urllib.parse import urlparse
 
 import questionary
+import requests
 import typer
 from rich.console import Console
 
 from .github import get_repo_source, parse_github_repo
-from .install import download_release, ensure_dirs, get_skills_in_zip, install_skill
+from .install import download_release, ensure_dirs, get_skill_paths, install_skill
 from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
 from .settings import RepoSource, format_source_label, settings
+from ._tree_ui import tree_checkbox
 
 app = typer.Typer(help="Minimal CLI to manage agent skills from GitHub releases or branches.")
 console = Console()
@@ -111,6 +113,7 @@ def add(
     ),
     skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch to install from instead of the latest release"),
+    search: Optional[str] = typer.Option(None, "--search", "-f", help="Filter skills shown in the tree (matches skill name or path, case-insensitive)"),
 ):
     """Add skills from a GitHub or Azure DevOps repository."""
     lock_key, short_ref = _parse_repo_input(repo)
@@ -125,11 +128,17 @@ def add(
 
     try:
         zip_path = _download(lock_key, source)
+    except requests.HTTPError as e:
+        
+        console.print(f"[red]HTTP error downloading {short_ref}:[/red] {e}")
+        print(e.response.text)
+        raise typer.Exit(1)
     except Exception as e:
         console.print(f"[red]Error downloading {short_ref}:[/red] {e}")
         raise typer.Exit(1)
 
-    available_skills = get_skills_in_zip(zip_path)
+    skill_paths = get_skill_paths(zip_path)
+    available_skills = sorted(skill_paths.keys())
     repo_data = normalize_repo_data(lock["repos"].get(lock_key, {"skills": []}))
     installed_skills = set(repo_data["skills"])
 
@@ -143,16 +152,23 @@ def add(
         if already_installed:
             console.print(f"[blue]Note: Skills already installed from {short_ref}: {', '.join(already_installed)}[/blue]")
     else:
-        to_show = [s for s in available_skills if s not in installed_skills]
+        available_paths = {k: v for k, v in skill_paths.items() if k not in installed_skills}
 
-        if not to_show:
+        if search:
+            needle = search.casefold()
+            available_paths = {k: v for k, v in available_paths.items() if needle in k.casefold() or needle in v.casefold()}
+            if not available_paths:
+                console.print(f"[yellow]No skills matching '{search}' found in {short_ref}.[/yellow]")
+                return
+
+        if not available_paths:
             console.print(f"[yellow]No new skills available to add from {short_ref}.[/yellow]")
             return
 
-        selected = questionary.checkbox(
-            f"Select skills to add from {short_ref}:",
-            choices=to_show,
-        ).ask()
+        prompt = f"Select skills to add from {short_ref}:"
+        if search:
+            prompt += f"  [filter: '{search}']"
+        selected = tree_checkbox(prompt, available_paths)
 
     if not selected:
         console.print("No skills selected or available for installation.")

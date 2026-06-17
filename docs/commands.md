@@ -69,12 +69,16 @@ skillup add <owner/repo> [OPTIONS]
 |--------|-------|-------------|
 | `--skill TEXT` | `-s` | Skill name to add (repeatable). Skips interactive picker. |
 | `--branch TEXT` | `-b` | Install from this branch instead of the latest release. |
+| `--search TEXT` | `-f` | Filter the interactive tree to skills whose name or path contains TEXT (case-insensitive). |
 
 **Examples**
 
 ```bash
-# Interactive picker — choose from all available skills
+# Interactive picker — browse the full skill tree
 skillup add google/gemini-cli-skills
+
+# Filter the tree to skills related to "python"
+skillup add myorg/skills --search python
 
 # Add one skill non-interactively
 skillup add anthropics/skills --skill pdf
@@ -85,6 +89,28 @@ skillup add anthropics/skills --skill pdf --skill code-review
 # Pin to a branch
 skillup add myorg/skills --branch main
 ```
+
+**Interactive tree picker**
+
+Without `--skill`, `skillup add` opens an interactive tree that mirrors the repository's directory structure:
+
+```
+Select skills to add from myorg/skills:
+  > docs/  [2 skills]
+      getting-started
+      reference
+    tools/  [3 skills]
+      linter
+      formatter
+      test-runner
+
+↑↓ move  Space toggle  Enter confirm  Ctrl-C cancel
+```
+
+- **Space** on a directory selects or deselects every skill beneath it.
+- Directory entries show a tri-state indicator: `[ ]` none, `[-]` partial, `[x]` all selected.
+- **Space** on an individual skill toggles just that skill and updates the parent's indicator.
+- Use `--search` to narrow the tree before the picker opens.
 
 **Behavior**
 

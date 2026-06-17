@@ -111,7 +111,7 @@ def _zip_url(org: str, project: str, repo: str, version: str, version_type: str)
     return (
         f"https://dev.azure.com/{quote(org, safe='')}/{quote(project, safe='')}/_apis/git/repositories"
         f"/{quote(repo, safe='')}/items"
-        f"?path=/&versionDescriptor.version={quote(version, safe='')}"
+        f"?scopePath=/&versionDescriptor.version={quote(version, safe='')}"
         f"&versionDescriptor.versionType={version_type}"
         f"&$format=zip&api-version={_API_VERSION}&recursionLevel=full"
     )

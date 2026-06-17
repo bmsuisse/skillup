@@ -1,4 +1,5 @@
 import json
+import zipfile
 import requests
 from pathlib import Path
 from skillup.cli import app
@@ -10,6 +11,19 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 runner = CliRunner()
+
+SKILLS = ["github", "prek", "nicegui"]
+
+
+@pytest.fixture
+def skill_zip(tmp_path):
+    """A real zip file with a nested skill tree matching what GitHub serves."""
+    zip_path = tmp_path / "skills-v1.0.0.zip"
+    with zipfile.ZipFile(zip_path, "w") as z:
+        for skill in SKILLS:
+            z.writestr(f"repo-v1.0.0/skills/{skill}/SKILL.md", f"# {skill}")
+    return zip_path
+
 
 @pytest.fixture
 def temp_dirs(tmp_path):
@@ -24,18 +38,16 @@ def temp_dirs(tmp_path):
     with patch("pathlib.Path.home", return_value=fake_home), \
          patch("pathlib.Path.cwd", return_value=fake_cwd), \
          patch("os.getenv", side_effect=lambda key, default=None: str(fake_temp) if key == "TEMP" else default):
-        # Reset settings to default before each test
         settings.is_global = False
         yield fake_home, fake_cwd
 
+
 @pytest.fixture
-def mock_network():
-    """Fixture to mock network-dependent functions."""
+def mock_network(skill_zip):
+    """Mock only the HTTP layer; use a real zip for skill discovery and installation."""
     with patch("skillup.github.get_latest_release") as mock_latest, \
          patch("skillup.github.get_commit_sha") as mock_commit, \
-         patch("skillup.cli.download_release") as mock_download, \
-         patch("skillup.cli.get_skills_in_zip") as mock_get_skills, \
-         patch("skillup.cli.install_skill") as mock_install:
+         patch("skillup.cli.download_release") as mock_download:
 
         mock_latest.return_value = ("v1.0.0", "http://example.com/zip")
         mock_commit.side_effect = lambda repo, ref: {
@@ -44,23 +56,12 @@ def mock_network():
             "main": "main-sha",
             "develop": "develop-sha",
         }.get(ref, f"{ref}-sha")
-        mock_download.return_value = Path("dummy.zip")
-        mock_get_skills.return_value = ["github", "prek", "nicegui"]
-
-        def side_effect_install(skill_name, zip_path):
-            for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
-                dest = target_dir / skill_name
-                dest.mkdir(parents=True, exist_ok=True)
-                (dest / "SKILL.md").write_text(f"Mocked {skill_name}")
-
-        mock_install.side_effect = side_effect_install
+        mock_download.return_value = skill_zip
 
         yield {
             "latest": mock_latest,
             "commit": mock_commit,
             "download": mock_download,
-            "get_skills": mock_get_skills,
-            "install": mock_install
         }
 
 def test_add_skills_local_default(temp_dirs, mock_network):
@@ -233,3 +234,128 @@ def test_cache_dir_override(temp_dirs, mock_network):
         assert result.exit_code == 0
 
         assert custom_cache.exists()
+
+
+# --- tree selection tests ---
+
+@pytest.fixture
+def nested_skill_zip(tmp_path):
+    """Zip with skills spread across two subdirectories."""
+    zip_path = tmp_path / "nested.zip"
+    with zipfile.ZipFile(zip_path, "w") as z:
+        z.writestr("repo-v1.0.0/tools/hammer/SKILL.md", "# hammer")
+        z.writestr("repo-v1.0.0/tools/saw/SKILL.md", "# saw")
+        z.writestr("repo-v1.0.0/docs/readme/SKILL.md", "# readme")
+    return zip_path
+
+
+def test_tree_nodes_structure():
+    """build_flat_nodes produces directory nodes and leaf nodes in DFS order."""
+    from skillup._tree_ui import build_flat_nodes
+
+    skill_paths = {
+        "hammer": "tools/hammer",
+        "saw": "tools/saw",
+        "readme": "docs/readme",
+    }
+    nodes = build_flat_nodes(skill_paths)
+    values = [n.value for n in nodes]
+
+    assert "__dir__:docs" in values
+    assert "__dir__:tools" in values
+    assert "hammer" in values
+    assert "saw" in values
+    assert "readme" in values
+
+    # directory node must appear before its children
+    tools_idx = values.index("__dir__:tools")
+    assert values.index("hammer") > tools_idx
+    assert values.index("saw") > tools_idx
+
+
+def test_toggle_dir_selects_children():
+    """Toggling a dir node checks all skills beneath it."""
+    from skillup._tree_ui import build_flat_nodes, toggle, dir_state
+
+    skill_paths = {"hammer": "tools/hammer", "saw": "tools/saw", "readme": "docs/readme"}
+    nodes = build_flat_nodes(skill_paths)
+    tools_idx = next(i for i, n in enumerate(nodes) if n.value == "__dir__:tools")
+
+    assert dir_state(tools_idx, nodes) == "none"
+    toggle(tools_idx, nodes)
+    assert dir_state(tools_idx, nodes) == "all"
+    assert all(nodes[c].checked for c in nodes[tools_idx].children)
+
+
+def test_toggle_dir_partial_then_full():
+    """Dir shows partial state when only some children are checked; toggling again checks all."""
+    from skillup._tree_ui import build_flat_nodes, toggle, dir_state
+
+    skill_paths = {"hammer": "tools/hammer", "saw": "tools/saw"}
+    nodes = build_flat_nodes(skill_paths)
+    tools_idx = next(i for i, n in enumerate(nodes) if n.value == "__dir__:tools")
+    hammer_idx = next(i for i, n in enumerate(nodes) if n.value == "hammer")
+
+    toggle(hammer_idx, nodes)
+    assert dir_state(tools_idx, nodes) == "some"
+
+    toggle(tools_idx, nodes)  # partial → check all
+    assert dir_state(tools_idx, nodes) == "all"
+
+    toggle(tools_idx, nodes)  # all → uncheck all
+    assert dir_state(tools_idx, nodes) == "none"
+
+
+def test_add_interactive_subtree_selection(temp_dirs, nested_skill_zip):
+    """Selecting a directory in interactive mode installs all skills under it."""
+    fake_home, fake_cwd = temp_dirs
+    repo = "org/nested"
+
+    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
+         patch("skillup.github.get_commit_sha", return_value="sha1"), \
+         patch("skillup.cli.download_release", return_value=nested_skill_zip), \
+         patch("skillup.cli.tree_checkbox", return_value=["hammer", "saw"]):
+
+        result = runner.invoke(app, ["add", repo])
+
+    assert result.exit_code == 0
+    assert (fake_cwd / ".agents" / "skills" / "hammer").exists()
+    assert (fake_cwd / ".agents" / "skills" / "saw").exists()
+    assert not (fake_cwd / ".agents" / "skills" / "readme").exists()
+
+    lock = load_lock()
+    assert sorted(lock["repos"][repo]["skills"]) == ["hammer", "saw"]
+
+
+def test_add_search_filter(temp_dirs, nested_skill_zip):
+    """--search filters the tree to skills whose name or path contains the term."""
+    fake_home, fake_cwd = temp_dirs
+    repo = "org/nested"
+
+    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
+         patch("skillup.github.get_commit_sha", return_value="sha1"), \
+         patch("skillup.cli.download_release", return_value=nested_skill_zip), \
+         patch("skillup.cli.tree_checkbox", return_value=["hammer"]) as mock_tree:
+
+        result = runner.invoke(app, ["add", repo, "--search", "tool"])
+
+    assert result.exit_code == 0
+    # Only skills under tools/ passed to the tree UI
+    passed_paths = mock_tree.call_args[0][1]
+    assert all("tool" in v for v in passed_paths.values())
+    assert "readme" not in passed_paths
+
+
+def test_add_search_no_match(temp_dirs, nested_skill_zip):
+    """--search with no matching skills exits early with a message."""
+    fake_home, fake_cwd = temp_dirs
+    repo = "org/nested"
+
+    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
+         patch("skillup.github.get_commit_sha", return_value="sha1"), \
+         patch("skillup.cli.download_release", return_value=nested_skill_zip):
+
+        result = runner.invoke(app, ["add", repo, "--search", "nonexistent"])
+
+    assert result.exit_code == 0
+    assert "nonexistent" in result.stdout
