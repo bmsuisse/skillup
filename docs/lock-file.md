@@ -10,6 +10,9 @@ skillup tracks installed skills in a lock file at:
 
 ```json
 {
+  "config": {
+    "target_dirs": ["/custom/agents/skills", "/custom/claude/skills"]
+  },
   "repos": {
     "google/gemini-cli-skills": {
       "skills": ["code-review", "pdf"],
@@ -27,7 +30,15 @@ skillup tracks installed skills in a lock file at:
 }
 ```
 
-## Fields
+The `config` section is optional and only written when you change settings from their defaults via `skillup config set-dirs`.
+
+## Fields — `config`
+
+| Field | Description |
+|-------|-------------|
+| `config.target_dirs` | List of directories where skills are installed. Omitted when using the built-in defaults. |
+
+## Fields — `repos`
 
 | Field | Description |
 |-------|-------------|
@@ -51,4 +62,10 @@ skillup sync
 
 ## Location override
 
-The `--global` flag switches the base directory (and therefore the lock file location) to your home directory. Without it, skillup uses the current working directory.
+The `--global` / `-g` flag switches the base directory (and therefore the lock file location) to your home directory. Without it, skillup uses the current working directory.
+
+For full control over the lock file path, use `--lock-file` / `-l`:
+
+```bash
+skillup --lock-file /shared/team.lock.json sync
+```

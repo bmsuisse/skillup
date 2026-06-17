@@ -19,9 +19,40 @@ console = Console()
 @app.callback()
 def main(
     is_global: bool = typer.Option(False, "--global", "-g", help="Use home directory instead of current directory"),
+    lock_file: Optional[Path] = typer.Option(None, "--lock-file", "-l", help="Path to lock file (overrides default location)"),
 ):
     """Minimal CLI to manage agent skills from GitHub releases or branches."""
     settings.is_global = is_global
+    if lock_file is not None:
+        settings.lock_file_override = lock_file
+
+
+config_app = typer.Typer(help="Manage skillup configuration.")
+app.add_typer(config_app, name="config")
+
+
+@config_app.command("set-dirs")
+def config_set_dirs(
+    dirs: List[str] = typer.Argument(..., help="Target directories for skill installation (space-separated)"),
+):
+    """Set the target directories where skills are installed. Persisted in the lock file."""
+    lock = load_lock()
+    settings.target_dirs_override = [Path(d) for d in dirs]
+    save_lock(lock)
+    console.print("[green]Target directories updated:[/green]")
+    for d in settings.target_dirs_override:
+        console.print(f"  {d}")
+
+
+@config_app.command("show")
+def config_show():
+    """Show current skillup configuration."""
+    lock = load_lock()
+    console.print(f"Lock file:    [cyan]{settings.lock_file}[/cyan]")
+    console.print("Target dirs:")
+    source = " [dim](from lock file)[/dim]" if lock.get("config", {}).get("target_dirs") else " [dim](default)[/dim]"
+    for d in settings.target_dirs:
+        console.print(f"  {d}{source}")
 
 
 @app.command()
@@ -31,8 +62,8 @@ def add(
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch to install from instead of the latest release"),
 ):
     """Add skills from a GitHub release or branch."""
-    ensure_dirs()
     lock = load_lock()
+    ensure_dirs()
 
     try:
         source = get_repo_source(repo, branch)
@@ -109,10 +140,9 @@ def remove():
     for item in selected:
         repo, skill = item.split(": ", 1)
         console.print(f"Removing [red]{skill}[/red] from {repo}...")
-        for target_dir in [settings.skills_dir_agents, settings.skills_dir_claude]:
+        for target_dir in settings.target_dirs:
             dest = target_dir / skill
             if dest.exists():
-                import shutil
                 shutil.rmtree(dest)
 
         lock["repos"][repo]["skills"].remove(skill)
@@ -173,8 +203,8 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
 @app.command()
 def sync():
     """Install all skills as defined in the lock file."""
-    ensure_dirs()
     lock = load_lock()
+    ensure_dirs()
 
     if not lock["repos"]:
         console.print("[yellow]No skills defined in lock file. Use 'add' to add skills.[/yellow]")

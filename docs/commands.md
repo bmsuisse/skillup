@@ -1,12 +1,59 @@
 # Commands
 
-## Global flag
+## Global options
 
-All commands accept a `--global` / `-g` flag that switches the lock file and base directory to your home directory instead of the current working directory.
+All commands accept these options before the subcommand name:
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--global` | `-g` | Use home directory instead of current working directory. |
+| `--lock-file PATH` | `-l` | Use a custom lock file path instead of the default. |
 
 ```bash
 skillup --global add myorg/skills
+skillup --lock-file /path/to/my.lock.json sync
 ```
+
+---
+
+## `config`
+
+Manage skillup configuration. Settings are persisted in the lock file.
+
+### `config set-dirs`
+
+Set the target directories where skills are installed.
+
+```bash
+skillup config set-dirs <DIR> [DIR...]
+```
+
+**Examples**
+
+```bash
+# Replace the two defaults with a single custom directory
+skillup config set-dirs /home/user/my-skills
+
+# Use custom paths for both agent frameworks
+skillup config set-dirs .agents/skills .vscode/skills
+```
+
+**Behavior**
+
+- Accepts one or more directory paths (space-separated).
+- Paths can be absolute or relative (resolved from the current working directory).
+- Saves the directories to the `config.target_dirs` key in the lock file.
+- All subsequent commands (`add`, `remove`, `update`, `sync`) install to and remove from these directories.
+
+### `config show`
+
+Display the current configuration.
+
+```bash
+skillup config show
+```
+
+Shows the active lock file path and target directories, including whether each was read from the lock file or is the built-in default.
 
 ---
 
