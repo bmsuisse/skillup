@@ -325,3 +325,37 @@ def test_add_interactive_subtree_selection(temp_dirs, nested_skill_zip):
 
     lock = load_lock()
     assert sorted(lock["repos"][repo]["skills"]) == ["hammer", "saw"]
+
+
+def test_add_search_filter(temp_dirs, nested_skill_zip):
+    """--search filters the tree to skills whose name or path contains the term."""
+    fake_home, fake_cwd = temp_dirs
+    repo = "org/nested"
+
+    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
+         patch("skillup.github.get_commit_sha", return_value="sha1"), \
+         patch("skillup.cli.download_release", return_value=nested_skill_zip), \
+         patch("skillup.cli.tree_checkbox", return_value=["hammer"]) as mock_tree:
+
+        result = runner.invoke(app, ["add", repo, "--search", "tool"])
+
+    assert result.exit_code == 0
+    # Only skills under tools/ passed to the tree UI
+    passed_paths = mock_tree.call_args[0][1]
+    assert all("tool" in v for v in passed_paths.values())
+    assert "readme" not in passed_paths
+
+
+def test_add_search_no_match(temp_dirs, nested_skill_zip):
+    """--search with no matching skills exits early with a message."""
+    fake_home, fake_cwd = temp_dirs
+    repo = "org/nested"
+
+    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
+         patch("skillup.github.get_commit_sha", return_value="sha1"), \
+         patch("skillup.cli.download_release", return_value=nested_skill_zip):
+
+        result = runner.invoke(app, ["add", repo, "--search", "nonexistent"])
+
+    assert result.exit_code == 0
+    assert "nonexistent" in result.stdout

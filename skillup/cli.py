@@ -113,6 +113,7 @@ def add(
     ),
     skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch to install from instead of the latest release"),
+    search: Optional[str] = typer.Option(None, "--search", "-f", help="Filter skills shown in the tree (matches skill name or path, case-insensitive)"),
 ):
     """Add skills from a GitHub or Azure DevOps repository."""
     lock_key, short_ref = _parse_repo_input(repo)
@@ -153,14 +154,21 @@ def add(
     else:
         available_paths = {k: v for k, v in skill_paths.items() if k not in installed_skills}
 
+        if search:
+            needle = search.casefold()
+            available_paths = {k: v for k, v in available_paths.items() if needle in k.casefold() or needle in v.casefold()}
+            if not available_paths:
+                console.print(f"[yellow]No skills matching '{search}' found in {short_ref}.[/yellow]")
+                return
+
         if not available_paths:
             console.print(f"[yellow]No new skills available to add from {short_ref}.[/yellow]")
             return
 
-        selected = tree_checkbox(
-            f"Select skills to add from {short_ref}:",
-            available_paths,
-        )
+        prompt = f"Select skills to add from {short_ref}:"
+        if search:
+            prompt += f"  [filter: '{search}']"
+        selected = tree_checkbox(prompt, available_paths)
 
     if not selected:
         console.print("No skills selected or available for installation.")
