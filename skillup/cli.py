@@ -1,5 +1,6 @@
 import json
 import shutil
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Any, List, Literal, Optional
 from urllib.parse import urlparse
@@ -16,8 +17,14 @@ from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data,
 from .settings import RepoSource, format_source_label, settings
 from ._tree_ui import tree_checkbox
 
-app = typer.Typer(help="Minimal CLI to manage agent skills from GitHub releases or branches.")
+app = typer.Typer(help=f"skillup {pkg_version('skillup')} — Minimal CLI to manage agent skills from GitHub releases or branches.")
 console = Console()
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(pkg_version("skillup"))
+        raise typer.Exit()
 
 
 def _detect_provider(repo_or_url: str) -> Literal["local", "azdevops", "github"]:
@@ -69,6 +76,7 @@ def _download(lock_key: str, source: RepoSource) -> Path:
 def main(
     is_global: bool = typer.Option(False, "--global", "-g", help="Use home directory instead of current directory"),
     lock_file: Optional[Path] = typer.Option(None, "--lock-file", "-l", help="Path to lock file (overrides default location)"),
+    version: Optional[bool] = typer.Option(None, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."),
 ):
     """Minimal CLI to manage agent skills from GitHub releases or branches."""
     settings.is_global = is_global
