@@ -17,7 +17,7 @@ from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data,
 from .settings import RepoSource, format_source_label, settings
 from ._tree_ui import tree_checkbox
 
-app = typer.Typer(help="Minimal CLI to manage agent skills from GitHub releases or branches.")
+app = typer.Typer(help=f"skillup {pkg_version('skillup')} — Minimal CLI to manage agent skills from GitHub releases or branches.")
 console = Console()
 
 
