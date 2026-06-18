@@ -2,7 +2,7 @@ import json
 import shutil
 from importlib.metadata import version as pkg_version
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 from urllib.parse import urlparse
 
 import questionary
@@ -12,6 +12,7 @@ from rich.console import Console
 
 from .github import get_repo_source, parse_github_repo
 from .install import download_release, ensure_dirs, get_skill_paths, install_skill
+from .local import get_skill_paths_local, install_skill_local, is_local_path, resolve_local_path
 from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
 from .settings import RepoSource, format_source_label, settings
 from ._tree_ui import tree_checkbox
@@ -26,8 +27,10 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-def _detect_provider(repo_or_url: str) -> str:
-    """Return 'azdevops' if the input is a recognised Azure DevOps URL, else 'github'."""
+def _detect_provider(repo_or_url: str) -> Literal["local", "azdevops", "github"]:
+    """Return 'local', 'azdevops', or 'github' based on the input format."""
+    if is_local_path(repo_or_url):
+        return "local"
     parsed = urlparse(repo_or_url)
     if not parsed.scheme:
         return "github"
@@ -114,19 +117,25 @@ def add(
     repo: str = typer.Argument(
         ...,
         help=(
-            "GitHub 'owner/repo', a full GitHub URL, or a full Azure DevOps URL "
-            "(https://dev.azure.com/… or https://org.visualstudio.com/…). "
-            "Provider is auto-detected from the URL domain; bare 'owner/repo' defaults to GitHub."
+            "GitHub 'owner/repo', a full GitHub URL, a full Azure DevOps URL "
+            "(https://dev.azure.com/… or https://org.visualstudio.com/…), "
+            "or a local path (/path/to/repo, C:\\path\\to\\repo, or file:///path)."
         ),
     ),
     skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch to install from instead of the latest release"),
     search: Optional[str] = typer.Option(None, "--search", "-f", help="Filter skills shown in the tree (matches skill name or path, case-insensitive)"),
+    all_skills: bool = typer.Option(False, "--all-skills", help="Install all available skills non-interactively"),
 ):
-    """Add skills from a GitHub or Azure DevOps repository."""
-    lock_key, short_ref = _parse_repo_input(repo)
+    """Add skills from a GitHub repository, Azure DevOps repository, or local path."""
     lock = load_lock()
     ensure_dirs()
+
+    if is_local_path(repo):
+        _add_local(repo, lock, skills, search, all_skills)
+        return
+
+    lock_key, short_ref = _parse_repo_input(repo)
 
     try:
         source = _resolve_source(lock_key, short_ref, branch)
@@ -137,7 +146,6 @@ def add(
     try:
         zip_path = _download(lock_key, source)
     except requests.HTTPError as e:
-        
         console.print(f"[red]HTTP error downloading {short_ref}:[/red] {e}")
         print(e.response.text)
         raise typer.Exit(1)
@@ -150,7 +158,12 @@ def add(
     repo_data = normalize_repo_data(lock["repos"].get(lock_key, {"skills": []}))
     installed_skills = set(repo_data["skills"])
 
-    if skills:
+    if all_skills:
+        selected = [s for s in available_skills if s not in installed_skills]
+        if not selected:
+            console.print(f"[yellow]No new skills available to add from {short_ref}.[/yellow]")
+            return
+    elif skills:
         selected = [s for s in skills if s in available_skills and s not in installed_skills]
         invalid = [s for s in skills if s not in available_skills]
         already_installed = [s for s in skills if s in installed_skills]
@@ -192,6 +205,69 @@ def add(
     lock["repos"][lock_key] = repo_data
     save_lock(lock)
     console.print(f"[green]Skills from {short_ref} installed successfully![/green]")
+
+
+def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optional[str], all_skills: bool = False) -> None:
+    local_path = resolve_local_path(repo)
+    if not local_path.is_dir():
+        console.print(f"[red]Local path does not exist or is not a directory: {local_path}[/red]")
+        raise typer.Exit(1)
+
+    lock_key = f"local:{local_path}"
+    display = str(local_path)
+    skill_paths = get_skill_paths_local(local_path)
+    available_skills = sorted(skill_paths.keys())
+    repo_data = lock["repos"].get(lock_key, {"skills": [], "source": "local", "path": str(local_path)})
+    installed_skills = set(repo_data.get("skills", []))
+
+    if all_skills:
+        selected = [s for s in available_skills if s not in installed_skills]
+        if not selected:
+            console.print(f"[yellow]No new skills available to add from {display}.[/yellow]")
+            return
+    elif skills:
+        selected = [s for s in skills if s in available_skills and s not in installed_skills]
+        invalid = [s for s in skills if s not in available_skills]
+        already_installed = [s for s in skills if s in installed_skills]
+
+        if invalid:
+            console.print(f"[yellow]Warning: Skills not found in {display}: {', '.join(invalid)}[/yellow]")
+        if already_installed:
+            console.print(f"[blue]Note: Skills already installed from {display}: {', '.join(already_installed)}[/blue]")
+    else:
+        available_paths = {k: v for k, v in skill_paths.items() if k not in installed_skills}
+
+        if search:
+            needle = search.casefold()
+            available_paths = {k: v for k, v in available_paths.items() if needle in k.casefold() or needle in v.casefold()}
+            if not available_paths:
+                console.print(f"[yellow]No skills matching '{search}' found in {display}.[/yellow]")
+                return
+
+        if not available_paths:
+            console.print(f"[yellow]No new skills available to add from {display}.[/yellow]")
+            return
+
+        prompt = f"Select skills to add from {display}:"
+        if search:
+            prompt += f"  [filter: '{search}']"
+        selected = tree_checkbox(prompt, available_paths)
+
+    if not selected:
+        console.print("No skills selected or available for installation.")
+        return
+
+    for skill in selected:
+        console.print(f"Installing [cyan]{skill}[/cyan]...")
+        install_skill_local(skill, local_path)
+        if skill not in repo_data["skills"]:
+            repo_data["skills"].append(skill)
+
+    repo_data["source"] = "local"
+    repo_data["path"] = str(local_path)
+    lock["repos"][lock_key] = repo_data
+    save_lock(lock)
+    console.print(f"[green]Skills from {display} installed successfully![/green]")
 
 
 @app.command()
@@ -249,6 +325,10 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
                 console.print(f"[red]Repository {r} is not tracked.[/red]")
             continue
 
+        if r.startswith("local:"):
+            console.print(f"[dim]Skipping local path {r[6:]} (no remote to update from).[/dim]")
+            continue
+
         repo_data = normalize_repo_data(lock["repos"][r])
         short_ref = r[5:] if r.startswith("azdo:") else r
         console.print(f"Checking updates for [cyan]{short_ref}[/cyan]...")
@@ -292,9 +372,21 @@ def sync():
         return
 
     for repo, repo_data in lock["repos"].items():
+        skills = repo_data["skills"]
+
+        if repo.startswith("local:"):
+            local_path = Path(repo_data.get("path", repo[6:]))
+            console.print(f"Syncing [cyan]{local_path}[/cyan] (local)...")
+            if not local_path.is_dir():
+                console.print(f"[red]  Local path not found: {local_path}[/red]")
+                continue
+            for skill in skills:
+                console.print(f"  Installing [cyan]{skill}[/cyan]...")
+                install_skill_local(skill, local_path)
+            continue
+
         source = get_sync_source(repo, repo_data)
         short_ref = repo[5:] if repo.startswith("azdo:") else repo
-        skills = repo_data["skills"]
         console.print(f"Syncing [cyan]{short_ref}[/cyan] at [green]{format_source_label(source)}[/green]...")
 
         try:
