@@ -123,13 +123,31 @@ Select skills to add from myorg/skills:
 
 ## `remove`
 
-Interactively remove installed skills.
+Remove installed skills interactively or non-interactively.
 
 ```bash
 skillup remove
 ```
 
 Shows a checkbox list of all installed skills across all tracked repos. Selected skills are deleted from disk and removed from the lock file. Repos with no remaining skills are dropped from the lock file entirely.
+
+**Options**
+
+| Flag | Description |
+|------|-------------|
+| `--skill <name>` | Remove a specific skill without prompting. Repeatable to remove multiple skills. |
+| `--skills-from <repo>` | Remove all skills from the given repo (lock-file key). |
+
+```bash
+# Remove a single skill
+skillup remove --skill my-skill
+
+# Remove multiple skills
+skillup remove --skill skill-a --skill skill-b
+
+# Remove all skills from a repo
+skillup remove --skills-from bmsuisse/my-skills
+```
 
 ---
 
