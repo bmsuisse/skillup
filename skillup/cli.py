@@ -271,37 +271,55 @@ def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optio
 
 
 @app.command()
-def remove():
-    """Interactively remove installed skills across all repositories."""
+def remove(
+    skill: Optional[List[str]] = typer.Option(None, "--skill", help="Skill name(s) to remove non-interactively."),
+    skills_from: Optional[str] = typer.Option(None, "--skills-from", help="Remove all skills from the given repo (lock-file key)."),
+):
+    """Remove installed skills. Pass --skill or --skills-from to skip interactive selection."""
     lock = load_lock()
 
     all_installed = []
     for repo, data in lock["repos"].items():
-        for skill in data["skills"]:
-            all_installed.append(f"{repo}: {skill}")
+        for s in data["skills"]:
+            all_installed.append(f"{repo}: {s}")
 
     if not all_installed:
         console.print("[yellow]No skills installed.[/yellow]")
         return
 
-    selected = questionary.checkbox(
-        "Select skills to remove:",
-        choices=all_installed,
-    ).ask()
+    if skills_from:
+        if skills_from not in lock["repos"]:
+            console.print(f"[yellow]Repo '{skills_from}' not found in lock file.[/yellow]")
+            return
+        selected = [f"{skills_from}: {s}" for s in lock["repos"][skills_from]["skills"]]
+    elif skill:
+        selected = []
+        for s in skill:
+            matches = [item for item in all_installed if item.split(": ", 1)[1] == s]
+            if not matches:
+                console.print(f"[yellow]Skill '{s}' not found in lock file.[/yellow]")
+            selected.extend(matches)
+        if not selected:
+            return
+    else:
+        selected = questionary.checkbox(
+            "Select skills to remove:",
+            choices=all_installed,
+        ).ask()
 
-    if not selected:
-        console.print("No skills selected.")
-        return
+        if not selected:
+            console.print("No skills selected.")
+            return
 
     for item in selected:
-        repo, skill = item.split(": ", 1)
-        console.print(f"Removing [red]{skill}[/red] from {repo}...")
+        repo, s = item.split(": ", 1)
+        console.print(f"Removing [red]{s}[/red] from {repo}...")
         for target_dir in settings.target_dirs:
-            dest = target_dir / skill
+            dest = target_dir / s
             if dest.exists():
                 shutil.rmtree(dest)
 
-        lock["repos"][repo]["skills"].remove(skill)
+        lock["repos"][repo]["skills"].remove(s)
         if not lock["repos"][repo]["skills"]:
             del lock["repos"][repo]
 
