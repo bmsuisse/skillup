@@ -273,8 +273,9 @@ def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optio
 @app.command()
 def remove(
     skill: Optional[List[str]] = typer.Option(None, "--skill", help="Skill name(s) to remove non-interactively."),
+    skills_from: Optional[str] = typer.Option(None, "--skills-from", help="Remove all skills from the given repo (lock-file key)."),
 ):
-    """Remove installed skills. Pass --skill to skip interactive selection."""
+    """Remove installed skills. Pass --skill or --skills-from to skip interactive selection."""
     lock = load_lock()
 
     all_installed = []
@@ -286,7 +287,12 @@ def remove(
         console.print("[yellow]No skills installed.[/yellow]")
         return
 
-    if skill:
+    if skills_from:
+        if skills_from not in lock["repos"]:
+            console.print(f"[yellow]Repo '{skills_from}' not found in lock file.[/yellow]")
+            return
+        selected = [f"{skills_from}: {s}" for s in lock["repos"][skills_from]["skills"]]
+    elif skill:
         selected = []
         for s in skill:
             matches = [item for item in all_installed if item.split(": ", 1)[1] == s]
