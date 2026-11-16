@@ -561,7 +561,7 @@ requires-dist = [
     { name = "requests" },
     { name = "rich" },
     { name = "truststore" },
-    { name = "typer" },
+    { name = "typer", specifier = ">=0.12.5" },
 ]
 provides-extras = ["azure"]
 

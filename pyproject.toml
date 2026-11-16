@@ -9,7 +9,7 @@ description = "A minimal CLI to manage agent skills from GitHub releases."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "typer",
+    "typer>=0.12.5",
     "rich",
     "questionary",
     "requests",
