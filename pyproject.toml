@@ -72,6 +72,9 @@ select = [
 ]
 ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any prek hook, not an error
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument"]  # Typer declares options as parameter defaults
+
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
