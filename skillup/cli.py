@@ -296,10 +296,7 @@ def remove(
     """Remove installed skills. Pass --skill or --skills-from to skip interactive selection."""
     lock = load_lock()
 
-    all_installed = []
-    for repo, data in lock["repos"].items():
-        for s in data["skills"]:
-            all_installed.append(f"{repo}: {s}")
+    all_installed = [f"{repo}: {s}" for repo, data in lock["repos"].items() for s in data["skills"]]
 
     if not all_installed:
         console.print("[yellow]No skills installed.[/yellow]")
