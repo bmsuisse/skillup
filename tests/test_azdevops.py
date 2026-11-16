@@ -12,10 +12,10 @@ from skillup.azdevops import (
 )
 from skillup.cli import _detect_provider, _parse_repo_input
 
-
 # ---------------------------------------------------------------------------
 # parse_azdevops_repo
 # ---------------------------------------------------------------------------
+
 
 class TestParseAzdevopsRepo:
     def test_dev_azure_com(self):
@@ -44,6 +44,7 @@ class TestParseAzdevopsRepo:
 # ---------------------------------------------------------------------------
 # _detect_provider / _parse_repo_input  (cli helpers)
 # ---------------------------------------------------------------------------
+
 
 class TestDetectProvider:
     def test_github_shorthand(self):
@@ -89,6 +90,7 @@ class TestParseRepoInput:
 # get_azdevops_token
 # ---------------------------------------------------------------------------
 
+
 class TestGetAzdevopsToken:
     def test_env_var(self):
         with patch.dict(os.environ, {"AZURE_DEVOPS_TOKEN": "my-pat"}):
@@ -106,9 +108,8 @@ class TestGetAzdevopsToken:
 
     def test_returns_none_when_no_auth(self):
         # Remove AZURE_DEVOPS_TOKEN and simulate azure.identity not installed
-        with patch.dict(os.environ, {}, clear=True):
-            with patch.dict("sys.modules", {"azure.identity": None}):
-                token = get_azdevops_token()
+        with patch.dict(os.environ, {}, clear=True), patch.dict("sys.modules", {"azure.identity": None}):
+            token = get_azdevops_token()
         assert token is None
 
     def test_env_var_takes_priority_over_credential(self):
@@ -123,6 +124,7 @@ class TestGetAzdevopsToken:
 # ---------------------------------------------------------------------------
 # get_azdevops_headers
 # ---------------------------------------------------------------------------
+
 
 class TestGetAzdevopsHeaders:
     def test_returns_bearer_header(self):
@@ -140,6 +142,7 @@ class TestGetAzdevopsHeaders:
 # get_azdevops_repo_source
 # ---------------------------------------------------------------------------
 
+
 class TestGetAzdevopsRepoSource:
     def _mock_session(self, commit_id: str = "abc1234567890"):
         mock_resp = MagicMock()
@@ -150,8 +153,10 @@ class TestGetAzdevopsRepoSource:
         return mock_session
 
     def test_resolves_main_by_default(self):
-        with patch("skillup.azdevops.get_azdevops_headers", return_value={}), \
-             patch("skillup.http._session", self._mock_session("deadbeef")):
+        with (
+            patch("skillup.azdevops.get_azdevops_headers", return_value={}),
+            patch("skillup.http._session", self._mock_session("deadbeef")),
+        ):
             source = get_azdevops_repo_source("org/project/repo")
 
         assert source.provider == "azdevops"
@@ -162,19 +167,21 @@ class TestGetAzdevopsRepoSource:
         assert "versionDescriptor.versionType=commit" in source.zip_url
 
     def test_resolves_custom_branch(self):
-        with patch("skillup.azdevops.get_azdevops_headers", return_value={}), \
-             patch("skillup.http._session", self._mock_session("cafebabe")):
+        with (
+            patch("skillup.azdevops.get_azdevops_headers", return_value={}),
+            patch("skillup.http._session", self._mock_session("cafebabe")),
+        ):
             source = get_azdevops_repo_source("org/project/repo", branch="develop")
 
         assert source.ref == "develop"
         assert source.commit == "cafebabe"
 
     def test_accepts_full_url(self):
-        with patch("skillup.azdevops.get_azdevops_headers", return_value={}), \
-             patch("skillup.http._session", self._mock_session("feedface")):
-            source = get_azdevops_repo_source(
-                "https://dev.azure.com/org/project/_git/repo"
-            )
+        with (
+            patch("skillup.azdevops.get_azdevops_headers", return_value={}),
+            patch("skillup.http._session", self._mock_session("feedface")),
+        ):
+            source = get_azdevops_repo_source("https://dev.azure.com/org/project/_git/repo")
 
         assert source.commit == "feedface"
 
@@ -185,14 +192,18 @@ class TestGetAzdevopsRepoSource:
         mock_session = MagicMock()
         mock_session.get.return_value = mock_resp
 
-        with patch("skillup.azdevops.get_azdevops_headers", return_value={}), \
-             patch("skillup.http._session", mock_session):
-            with pytest.raises(ValueError, match="No commits found"):
-                get_azdevops_repo_source("org/project/repo")
+        with (
+            patch("skillup.azdevops.get_azdevops_headers", return_value={}),
+            patch("skillup.http._session", mock_session),
+            pytest.raises(ValueError, match="No commits found"),
+        ):
+            get_azdevops_repo_source("org/project/repo")
 
     def test_url_encodes_special_chars(self):
-        with patch("skillup.azdevops.get_azdevops_headers", return_value={}), \
-             patch("skillup.http._session", self._mock_session("aabbcc")):
+        with (
+            patch("skillup.azdevops.get_azdevops_headers", return_value={}),
+            patch("skillup.http._session", self._mock_session("aabbcc")),
+        ):
             source = get_azdevops_repo_source("org/BMS – OnPrem/BMS – OnPrem")
 
         assert "BMS%20%E2%80%93%20OnPrem" in source.zip_url
@@ -205,6 +216,7 @@ class TestGetAzdevopsRepoSource:
 # ---------------------------------------------------------------------------
 # get_azdevops_sync_source
 # ---------------------------------------------------------------------------
+
 
 class TestGetAzdevopsSyncSource:
     def test_from_commit(self):

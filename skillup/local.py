@@ -20,6 +20,7 @@ def resolve_local_path(s: str) -> Path:
     parsed = urlparse(s)
     if parsed.scheme == "file":
         from urllib.request import url2pathname
+
         return Path(url2pathname(parsed.path)).resolve()
     return Path(s).resolve()
 

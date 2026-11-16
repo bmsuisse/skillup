@@ -1,5 +1,5 @@
 import os
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import quote, unquote, urlparse
 
 from .http import session
@@ -55,7 +55,7 @@ def parse_azdevops_repo(repo_or_url: str) -> str:
     return repo_or_url
 
 
-def get_azdevops_token() -> Optional[str]:
+def get_azdevops_token() -> str | None:
     """Return a bearer token for Azure DevOps.
 
     Priority:
@@ -125,7 +125,7 @@ def _parse_ref(full_ref: str) -> tuple[str, str, str]:
     return parts[0], parts[1], parts[2]
 
 
-def get_azdevops_repo_source(full_ref: str, branch: Optional[str] = None) -> RepoSource:
+def get_azdevops_repo_source(full_ref: str, branch: str | None = None) -> RepoSource:
     """Resolve an Azure DevOps repo to a ``RepoSource``.
 
     Args:

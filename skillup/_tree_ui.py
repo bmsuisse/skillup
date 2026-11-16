@@ -13,7 +13,7 @@ from prompt_toolkit.styles import Style
 @dataclass
 class Node:
     label: str
-    value: str        # "__dir__:path" or skill_name
+    value: str  # "__dir__:path" or skill_name
     depth: int
     checked: bool = False
     parent: int = -1  # index in flat list; -1 = top-level
@@ -25,9 +25,7 @@ class Node:
 
 
 def _count_in_subtree(t: dict) -> int:
-    return len(t.get("_skills", [])) + sum(
-        _count_in_subtree(v) for k, v in t.items() if k != "_skills"
-    )
+    return len(t.get("_skills", [])) + sum(_count_in_subtree(v) for k, v in t.items() if k != "_skills")
 
 
 def build_flat_nodes(skill_paths: dict[str, str]) -> list[Node]:
@@ -50,24 +48,28 @@ def build_flat_nodes(skill_paths: dict[str, str]) -> list[Node]:
             dir_idx = len(nodes)
             if parent_idx >= 0:
                 nodes[parent_idx].children.append(dir_idx)
-            nodes.append(Node(
-                label=f"{dir_name}/  [{n} skill{s}]",
-                value=f"__dir__:{dir_path}",
-                depth=depth,
-                parent=parent_idx,
-            ))
+            nodes.append(
+                Node(
+                    label=f"{dir_name}/  [{n} skill{s}]",
+                    value=f"__dir__:{dir_path}",
+                    depth=depth,
+                    parent=parent_idx,
+                )
+            )
             flatten(subtree[dir_name], dir_path, depth + 1, dir_idx)
 
         for skill in sorted(subtree.get("_skills", [])):
             skill_idx = len(nodes)
             if parent_idx >= 0:
                 nodes[parent_idx].children.append(skill_idx)
-            nodes.append(Node(
-                label=skill,
-                value=skill,
-                depth=depth,
-                parent=parent_idx,
-            ))
+            nodes.append(
+                Node(
+                    label=skill,
+                    value=skill,
+                    depth=depth,
+                    parent=parent_idx,
+                )
+            )
 
     flatten(tree, "", 0, -1)
     return nodes
@@ -79,9 +81,9 @@ def dir_state(idx: int, nodes: list[Node]) -> str:
     if not node.children:
         return "all" if node.checked else "none"
     checked = sum(
-        1 for c in node.children
-        if (nodes[c].is_dir and dir_state(c, nodes) == "all")
-        or (not nodes[c].is_dir and nodes[c].checked)
+        1
+        for c in node.children
+        if (nodes[c].is_dir and dir_state(c, nodes) == "all") or (not nodes[c].is_dir and nodes[c].checked)
     )
     if checked == 0:
         return "none"
@@ -136,16 +138,20 @@ def tree_checkbox(prompt: str, skill_paths: dict[str, str]) -> list[str] | None:
     kb = KeyBindings()
 
     @kb.add("up")
-    def _(e): state["cursor"] = max(0, state["cursor"] - 1)
+    def _(e):
+        state["cursor"] = max(0, state["cursor"] - 1)
 
     @kb.add("down")
-    def _(e): state["cursor"] = min(len(nodes) - 1, state["cursor"] + 1)
+    def _(e):
+        state["cursor"] = min(len(nodes) - 1, state["cursor"] + 1)
 
     @kb.add("space")
-    def _(e): toggle(state["cursor"], nodes)
+    def _(e):
+        toggle(state["cursor"], nodes)
 
     @kb.add("enter")
-    def _(e): e.app.exit()
+    def _(e):
+        e.app.exit()
 
     @kb.add("c-c")
     def _(e):
@@ -155,11 +161,13 @@ def tree_checkbox(prompt: str, skill_paths: dict[str, str]) -> list[str] | None:
     app = Application(
         layout=Layout(Window(FormattedTextControl(get_tokens, focusable=True))),
         key_bindings=kb,
-        style=Style.from_dict({
-            "cursor": "reverse",
-            "prompt": "bold",
-            "hint": "fg:ansigray italic",
-        }),
+        style=Style.from_dict(
+            {
+                "cursor": "reverse",
+                "prompt": "bold",
+                "hint": "fg:ansigray italic",
+            }
+        ),
         mouse_support=False,
     )
     app.run()

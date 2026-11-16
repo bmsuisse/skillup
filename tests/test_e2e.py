@@ -1,14 +1,15 @@
 import json
 import zipfile
-import requests
-from pathlib import Path
-from skillup.cli import app
-from skillup.settings import settings
-from skillup.lock import load_lock, save_lock
-from skillup.install import ensure_dirs
-from typer.testing import CliRunner
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+import requests
+from typer.testing import CliRunner
+
+from skillup.cli import app
+from skillup.install import ensure_dirs
+from skillup.lock import load_lock, save_lock
+from skillup.settings import settings
 
 runner = CliRunner()
 
@@ -35,9 +36,11 @@ def temp_dirs(tmp_path):
     fake_temp = tmp_path / "temp"
     fake_temp.mkdir()
 
-    with patch("pathlib.Path.home", return_value=fake_home), \
-         patch("pathlib.Path.cwd", return_value=fake_cwd), \
-         patch("os.getenv", side_effect=lambda key, default=None: str(fake_temp) if key == "TEMP" else default):
+    with (
+        patch("pathlib.Path.home", return_value=fake_home),
+        patch("pathlib.Path.cwd", return_value=fake_cwd),
+        patch("os.getenv", side_effect=lambda key, default=None: str(fake_temp) if key == "TEMP" else default),
+    ):
         settings.is_global = False
         yield fake_home, fake_cwd
 
@@ -45,10 +48,11 @@ def temp_dirs(tmp_path):
 @pytest.fixture
 def mock_network(skill_zip):
     """Mock only the HTTP layer; use a real zip for skill discovery and installation."""
-    with patch("skillup.github.get_latest_release") as mock_latest, \
-         patch("skillup.github.get_commit_sha") as mock_commit, \
-         patch("skillup.cli.download_release") as mock_download:
-
+    with (
+        patch("skillup.github.get_latest_release") as mock_latest,
+        patch("skillup.github.get_commit_sha") as mock_commit,
+        patch("skillup.cli.download_release") as mock_download,
+    ):
         mock_latest.return_value = ("v1.0.0", "http://example.com/zip")
         mock_commit.side_effect = lambda repo, ref: {
             "v1.0.0": "release-sha",
@@ -63,6 +67,7 @@ def mock_network(skill_zip):
             "commit": mock_commit,
             "download": mock_download,
         }
+
 
 def test_add_skills_local_default(temp_dirs, mock_network):
     """Test that skills are installed to CWD by default."""
@@ -86,6 +91,7 @@ def test_add_skills_local_default(temp_dirs, mock_network):
 
     assert not (fake_home / ".agents").exists()
 
+
 def test_add_skills_global(temp_dirs, mock_network):
     """Test that skills are installed to HOME with --global flag."""
     fake_home, fake_cwd = temp_dirs
@@ -107,6 +113,7 @@ def test_add_skills_global(temp_dirs, mock_network):
 
     assert not (fake_cwd / ".agents").exists()
 
+
 def test_remove_skills_local(temp_dirs, mock_network):
     """Test removing skills from local installation."""
     fake_home, fake_cwd = temp_dirs
@@ -117,14 +124,7 @@ def test_remove_skills_local(temp_dirs, mock_network):
     (settings.skills_dir_agents / skill).mkdir(parents=True)
     (settings.skills_dir_agents / skill / "SKILL.md").write_text("test")
 
-    lock_data = {
-        "repos": {
-            repo: {
-                "tag": "v1.0.0",
-                "skills": [skill]
-            }
-        }
-    }
+    lock_data = {"repos": {repo: {"tag": "v1.0.0", "skills": [skill]}}}
     save_lock(lock_data)
 
     assert (fake_cwd / ".agents" / "skills" / skill).exists()
@@ -137,20 +137,14 @@ def test_remove_skills_local(temp_dirs, mock_network):
     assert not (fake_cwd / ".agents" / "skills" / skill).exists()
     assert not (fake_cwd / ".agents" / "skills.lock.json").exists()
 
+
 def test_sync_local(temp_dirs, mock_network):
     """Test sync in local directory."""
     fake_home, fake_cwd = temp_dirs
     repo = "bmsuisse/skills"
     skill = "github"
 
-    lock_data = {
-        "repos": {
-            repo: {
-                "tag": "v1.0.0",
-                "skills": [skill]
-            }
-        }
-    }
+    lock_data = {"repos": {repo: {"tag": "v1.0.0", "skills": [skill]}}}
     ensure_dirs()
     save_lock(lock_data)
 
@@ -160,6 +154,7 @@ def test_sync_local(temp_dirs, mock_network):
     assert (fake_cwd / ".agents" / "skills" / skill).exists()
     mock_network["download"].assert_called_with(repo, "v1.0.0", f"https://api.github.com/repos/{repo}/zipball/v1.0.0")
 
+
 def test_update_local(temp_dirs, mock_network):
     """Test update in local directory."""
     fake_home, fake_cwd = temp_dirs
@@ -167,14 +162,7 @@ def test_update_local(temp_dirs, mock_network):
     skill = "github"
 
     ensure_dirs()
-    lock_data = {
-        "repos": {
-            repo: {
-                "tag": "v0.9.0",
-                "skills": [skill]
-            }
-        }
-    }
+    lock_data = {"repos": {repo: {"tag": "v0.9.0", "skills": [skill]}}}
     save_lock(lock_data)
 
     mock_network["latest"].return_value = ("v1.1.0", "http://example.com/zip2")
@@ -189,6 +177,7 @@ def test_update_local(temp_dirs, mock_network):
     assert lock["repos"][repo]["source"] == "release"
     assert lock["repos"][repo]["commit"] == "release-sha-2"
 
+
 def test_add_skills_from_branch(temp_dirs, mock_network):
     """Test that branch-based installs store branch and commit metadata."""
     fake_home, fake_cwd = temp_dirs
@@ -202,7 +191,10 @@ def test_add_skills_from_branch(temp_dirs, mock_network):
     assert lock["repos"][repo]["branch"] == "develop"
     assert lock["repos"][repo]["commit"] == "develop-sha"
     mock_network["latest"].assert_not_called()
-    mock_network["download"].assert_called_with(repo, "develop-sha", "https://api.github.com/repos/anthropics/skills/zipball/develop-sha")
+    mock_network["download"].assert_called_with(
+        repo, "develop-sha", "https://api.github.com/repos/anthropics/skills/zipball/develop-sha"
+    )
+
 
 def test_add_skills_falls_back_to_main_branch(temp_dirs, mock_network):
     """Test that repos without releases fall back to main."""
@@ -219,7 +211,10 @@ def test_add_skills_falls_back_to_main_branch(temp_dirs, mock_network):
     assert lock["repos"][repo]["source"] == "branch"
     assert lock["repos"][repo]["branch"] == "main"
     assert lock["repos"][repo]["commit"] == "main-sha"
-    mock_network["download"].assert_called_with(repo, "main-sha", "https://api.github.com/repos/anthropics/skills/zipball/main-sha")
+    mock_network["download"].assert_called_with(
+        repo, "main-sha", "https://api.github.com/repos/anthropics/skills/zipball/main-sha"
+    )
+
 
 def test_cache_dir_override(temp_dirs, mock_network):
     """Test that SKILLUP_CACHE_DIR environment variable overrides the default cache dir."""
@@ -227,7 +222,9 @@ def test_cache_dir_override(temp_dirs, mock_network):
     custom_cache = fake_home / "custom_cache"
     custom_cache.mkdir()
 
-    with patch("os.getenv", side_effect=lambda key, default=None: str(custom_cache) if key == "SKILLUP_CACHE_DIR" else default):
+    with patch(
+        "os.getenv", side_effect=lambda key, default=None: str(custom_cache) if key == "SKILLUP_CACHE_DIR" else default
+    ):
         assert settings.cache_dir == custom_cache
 
         result = runner.invoke(app, ["sync"])
@@ -237,6 +234,7 @@ def test_cache_dir_override(temp_dirs, mock_network):
 
 
 # --- tree selection tests ---
+
 
 @pytest.fixture
 def nested_skill_zip(tmp_path):
@@ -275,7 +273,7 @@ def test_tree_nodes_structure():
 
 def test_toggle_dir_selects_children():
     """Toggling a dir node checks all skills beneath it."""
-    from skillup._tree_ui import build_flat_nodes, toggle, dir_state
+    from skillup._tree_ui import build_flat_nodes, dir_state, toggle
 
     skill_paths = {"hammer": "tools/hammer", "saw": "tools/saw", "readme": "docs/readme"}
     nodes = build_flat_nodes(skill_paths)
@@ -289,7 +287,7 @@ def test_toggle_dir_selects_children():
 
 def test_toggle_dir_partial_then_full():
     """Dir shows partial state when only some children are checked; toggling again checks all."""
-    from skillup._tree_ui import build_flat_nodes, toggle, dir_state
+    from skillup._tree_ui import build_flat_nodes, dir_state, toggle
 
     skill_paths = {"hammer": "tools/hammer", "saw": "tools/saw"}
     nodes = build_flat_nodes(skill_paths)
@@ -311,11 +309,12 @@ def test_add_interactive_subtree_selection(temp_dirs, nested_skill_zip):
     fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
 
-    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
-         patch("skillup.github.get_commit_sha", return_value="sha1"), \
-         patch("skillup.cli.download_release", return_value=nested_skill_zip), \
-         patch("skillup.cli.tree_checkbox", return_value=["hammer", "saw"]):
-
+    with (
+        patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")),
+        patch("skillup.github.get_commit_sha", return_value="sha1"),
+        patch("skillup.cli.download_release", return_value=nested_skill_zip),
+        patch("skillup.cli.tree_checkbox", return_value=["hammer", "saw"]),
+    ):
         result = runner.invoke(app, ["add", repo])
 
     assert result.exit_code == 0
@@ -332,11 +331,12 @@ def test_add_search_filter(temp_dirs, nested_skill_zip):
     fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
 
-    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
-         patch("skillup.github.get_commit_sha", return_value="sha1"), \
-         patch("skillup.cli.download_release", return_value=nested_skill_zip), \
-         patch("skillup.cli.tree_checkbox", return_value=["hammer"]) as mock_tree:
-
+    with (
+        patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")),
+        patch("skillup.github.get_commit_sha", return_value="sha1"),
+        patch("skillup.cli.download_release", return_value=nested_skill_zip),
+        patch("skillup.cli.tree_checkbox", return_value=["hammer"]) as mock_tree,
+    ):
         result = runner.invoke(app, ["add", repo, "--search", "tool"])
 
     assert result.exit_code == 0
@@ -351,10 +351,11 @@ def test_add_search_no_match(temp_dirs, nested_skill_zip):
     fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
 
-    with patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")), \
-         patch("skillup.github.get_commit_sha", return_value="sha1"), \
-         patch("skillup.cli.download_release", return_value=nested_skill_zip):
-
+    with (
+        patch("skillup.github.get_latest_release", return_value=("v1.0.0", "http://x")),
+        patch("skillup.github.get_commit_sha", return_value="sha1"),
+        patch("skillup.cli.download_release", return_value=nested_skill_zip),
+    ):
         result = runner.invoke(app, ["add", repo, "--search", "nonexistent"])
 
     assert result.exit_code == 0

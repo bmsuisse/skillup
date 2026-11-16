@@ -1,6 +1,5 @@
-import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from typer.testing import CliRunner
@@ -22,9 +21,11 @@ def temp_dirs(tmp_path):
     fake_temp = tmp_path / "temp"
     fake_temp.mkdir()
 
-    with patch("pathlib.Path.home", return_value=fake_home), \
-         patch("pathlib.Path.cwd", return_value=fake_cwd), \
-         patch("os.getenv", side_effect=lambda key, default=None: str(fake_temp) if key == "TEMP" else default):
+    with (
+        patch("pathlib.Path.home", return_value=fake_home),
+        patch("pathlib.Path.cwd", return_value=fake_cwd),
+        patch("os.getenv", side_effect=lambda key, default=None: str(fake_temp) if key == "TEMP" else default),
+    ):
         settings.is_global = False
         yield fake_home, fake_cwd
 
