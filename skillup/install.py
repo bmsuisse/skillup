@@ -39,7 +39,7 @@ def download_release(
 
         response = session().get(url, headers=headers, stream=True)
         response.raise_for_status()
-        with open(cache_path, "wb") as f:
+        with cache_path.open("wb") as f:
             shutil.copyfileobj(response.raw, f)
 
     return cache_path
@@ -95,5 +95,5 @@ def install_skill(skill_name: str, zip_path: Path) -> None:
                     target_file.mkdir(parents=True, exist_ok=True)
                 else:
                     target_file.parent.mkdir(parents=True, exist_ok=True)
-                    with z.open(file_info) as source, open(target_file, "wb") as target:
+                    with z.open(file_info) as source, target_file.open("wb") as target:
                         shutil.copyfileobj(source, target)
