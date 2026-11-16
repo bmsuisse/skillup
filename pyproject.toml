@@ -30,6 +30,7 @@ skillup = "skillup.cli:app"
 
 [tool.uv]
 package = true
+exclude-newer = "5 days"
 
 [tool.hatch.build.targets.wheel]
 packages = ["skillup"]
