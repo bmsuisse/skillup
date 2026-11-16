@@ -18,7 +18,7 @@ def parse_azdevops_repo(repo_or_url: str) -> str:
     - ``https://user@dev.azure.com/org/project/_git/repo``
     - ``https://org.visualstudio.com/project/_git/repo``  (legacy)
 
-    Names are URL-decoded so ``BMS%20%E2%80%93%20OnPrem`` becomes ``BMS – OnPrem``.
+    Names are URL-decoded, e.g. ``%20`` becomes a space and ``%E2%80%93`` becomes an en dash.
     The returned shorthand uses ``/`` as separator; names must not contain slashes.
     """
     parsed = urlparse(repo_or_url)

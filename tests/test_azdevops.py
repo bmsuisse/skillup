@@ -28,7 +28,7 @@ class TestParseAzdevopsRepo:
 
     def test_url_encoded_names(self) -> None:
         url = "https://bmeurope@dev.azure.com/bmeurope/BMS%20%E2%80%93%20OnPrem/_git/BMS%20%E2%80%93%20OnPrem"
-        assert parse_azdevops_repo(url) == "bmeurope/BMS – OnPrem/BMS – OnPrem"
+        assert parse_azdevops_repo(url) == "bmeurope/BMS \u2013 OnPrem/BMS \u2013 OnPrem"
 
     def test_visualstudio_com(self) -> None:
         url = "https://myorg.visualstudio.com/myproject/_git/myrepo"
@@ -82,7 +82,7 @@ class TestParseRepoInput:
     def test_azdevops_url_encoded(self) -> None:
         url = "https://bmeurope@dev.azure.com/bmeurope/BMS%20%E2%80%93%20OnPrem/_git/BMS%20%E2%80%93%20OnPrem"
         lock_key, short_ref = _parse_repo_input(url)
-        assert short_ref == "bmeurope/BMS – OnPrem/BMS – OnPrem"
+        assert short_ref == "bmeurope/BMS \u2013 OnPrem/BMS \u2013 OnPrem"
         assert lock_key == f"azdo:{short_ref}"
 
 
@@ -204,7 +204,7 @@ class TestGetAzdevopsRepoSource:
             patch("skillup.azdevops.get_azdevops_headers", return_value={}),
             patch("skillup.azdevops.session", return_value=self._mock_session("aabbcc")),
         ):
-            source = get_azdevops_repo_source("org/BMS – OnPrem/BMS – OnPrem")
+            source = get_azdevops_repo_source("org/BMS \u2013 OnPrem/BMS \u2013 OnPrem")
 
         assert "BMS%20%E2%80%93%20OnPrem" in source.zip_url
 
