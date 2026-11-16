@@ -10,9 +10,7 @@ def is_local_path(s: str) -> bool:
         return True
     if re.match(r"^[a-zA-Z]:[/\\]", s):
         return True
-    if urlparse(s).scheme == "file":
-        return True
-    return False
+    return urlparse(s).scheme == "file"
 
 
 def resolve_local_path(s: str) -> Path:

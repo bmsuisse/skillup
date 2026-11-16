@@ -152,10 +152,7 @@ def get_azdevops_sync_source(full_ref: str, repo_data: dict[str, Any]) -> RepoSo
     ref = repo_data.get("ref") or repo_data.get("branch") or "main"
     commit = repo_data.get("commit")
 
-    if commit:
-        zip_url = _zip_url(org, project, repo, commit, "commit")
-    else:
-        zip_url = _zip_url(org, project, repo, ref, "branch")
+    zip_url = _zip_url(org, project, repo, commit, "commit") if commit else _zip_url(org, project, repo, ref, "branch")
 
     return RepoSource(
         kind=repo_data.get("source", "branch"),
