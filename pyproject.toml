@@ -35,6 +35,9 @@ skillup = "skillup.cli:app"
 package = true
 exclude-newer = "5 days"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["skillup"]
 
