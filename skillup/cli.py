@@ -151,17 +151,17 @@ def add(
         source = _resolve_source(lock_key, short_ref, branch)
     except Exception as e:
         console.print(f"[red]Error fetching source info for {short_ref}:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     try:
         zip_path = _download(lock_key, source)
     except requests.HTTPError as e:
         console.print(f"[red]HTTP error downloading {short_ref}:[/red] {e}")
-        print(e.response.text)
-        raise typer.Exit(1)
+        typer.echo(e.response.text)
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"[red]Error downloading {short_ref}:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     skill_paths = get_skill_paths(zip_path)
     available_skills = sorted(skill_paths.keys())
@@ -456,7 +456,7 @@ def migrate(
         data = json.loads(resolved.read_text())
     except Exception as e:
         console.print(f"[red]Failed to parse {resolved}:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     skills_map: dict[str, Any] = data.get("skills", {})
     if not skills_map:
