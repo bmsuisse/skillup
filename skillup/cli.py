@@ -2,7 +2,7 @@ import json
 import shutil
 from importlib.metadata import version as pkg_version
 from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import questionary
@@ -10,14 +10,16 @@ import requests
 import typer
 from rich.console import Console
 
-from .github import get_repo_source, parse_github_repo
-from .install import download_release, ensure_dirs, get_skill_paths, install_skill
-from .local import get_skill_paths_local, install_skill_local, is_local_path, resolve_local_path
-from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
-from .settings import RepoSource, format_source_label, settings
-from ._tree_ui import tree_checkbox
+from skillup._tree_ui import tree_checkbox
+from skillup.github import get_repo_source, parse_github_repo
+from skillup.install import download_release, ensure_dirs, get_skill_paths, install_skill
+from skillup.local import get_skill_paths_local, install_skill_local, is_local_path, resolve_local_path
+from skillup.lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
+from skillup.settings import RepoSource, format_source_label, settings
 
-app = typer.Typer(help=f"skillup {pkg_version('skillup')} — Minimal CLI to manage agent skills from GitHub releases or branches.")
+app = typer.Typer(
+    help=f"skillup {pkg_version('skillup')} — Minimal CLI to manage agent skills from GitHub releases or branches."
+)
 console = Console()
 
 
@@ -48,7 +50,7 @@ def _parse_repo_input(repo_or_url: str) -> tuple[str, str]:
     """
     provider = _detect_provider(repo_or_url)
     if provider == "azdevops":
-        from .azdevops import parse_azdevops_repo
+        from skillup.azdevops import parse_azdevops_repo
 
         short_ref = parse_azdevops_repo(repo_or_url)
         return f"azdo:{short_ref}", short_ref
@@ -56,9 +58,9 @@ def _parse_repo_input(repo_or_url: str) -> tuple[str, str]:
     return short_ref, short_ref
 
 
-def _resolve_source(lock_key: str, short_ref: str, branch: Optional[str] = None) -> RepoSource:
+def _resolve_source(lock_key: str, short_ref: str, branch: str | None = None) -> RepoSource:
     if lock_key.startswith("azdo:"):
-        from .azdevops import get_azdevops_repo_source
+        from skillup.azdevops import get_azdevops_repo_source
 
         return get_azdevops_repo_source(short_ref, branch)
     return get_repo_source(short_ref, branch)
@@ -66,7 +68,7 @@ def _resolve_source(lock_key: str, short_ref: str, branch: Optional[str] = None)
 
 def _download(lock_key: str, source: RepoSource) -> Path:
     if source.provider == "azdevops":
-        from .azdevops import get_azdevops_headers
+        from skillup.azdevops import get_azdevops_headers
 
         return download_release(lock_key, source.cache_key, source.zip_url, get_azdevops_headers())
     return download_release(lock_key, source.cache_key, source.zip_url)
@@ -75,9 +77,13 @@ def _download(lock_key: str, source: RepoSource) -> Path:
 @app.callback()
 def main(
     is_global: bool = typer.Option(False, "--global", "-g", help="Use home directory instead of current directory"),
-    lock_file: Optional[Path] = typer.Option(None, "--lock-file", "-l", help="Path to lock file (overrides default location)"),
-    version: Optional[bool] = typer.Option(None, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."),
-):
+    lock_file: Path | None = typer.Option(
+        None, "--lock-file", "-l", help="Path to lock file (overrides default location)"
+    ),
+    version: bool | None = typer.Option(
+        None, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."
+    ),
+) -> None:
     """Minimal CLI to manage agent skills from GitHub releases or branches."""
     settings.is_global = is_global
     if lock_file is not None:
@@ -90,8 +96,8 @@ app.add_typer(config_app, name="config")
 
 @config_app.command("set-dirs")
 def config_set_dirs(
-    dirs: List[str] = typer.Argument(..., help="Target directories for skill installation (space-separated)"),
-):
+    dirs: list[str] = typer.Argument(..., help="Target directories for skill installation (space-separated)"),
+) -> None:
     """Set the target directories where skills are installed. Persisted in the lock file."""
     lock = load_lock()
     settings.target_dirs_override = [Path(d) for d in dirs]
@@ -102,7 +108,7 @@ def config_set_dirs(
 
 
 @config_app.command("show")
-def config_show():
+def config_show() -> None:
     """Show current skillup configuration."""
     lock = load_lock()
     console.print(f"Lock file:    [cyan]{settings.lock_file}[/cyan]")
@@ -122,11 +128,15 @@ def add(
             "or a local path (/path/to/repo, C:\\path\\to\\repo, or file:///path)."
         ),
     ),
-    skills: Optional[List[str]] = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)"),
-    branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch to install from instead of the latest release"),
-    search: Optional[str] = typer.Option(None, "--search", "-f", help="Filter skills shown in the tree (matches skill name or path, case-insensitive)"),
+    skills: list[str] | None = typer.Option(None, "--skill", "-s", help="Specific skill(s) to add (non-interactive)"),
+    branch: str | None = typer.Option(
+        None, "--branch", "-b", help="Branch to install from instead of the latest release"
+    ),
+    search: str | None = typer.Option(
+        None, "--search", "-f", help="Filter skills shown in the tree (matches skill name or path, case-insensitive)"
+    ),
     all_skills: bool = typer.Option(False, "--all-skills", help="Install all available skills non-interactively"),
-):
+) -> None:
     """Add skills from a GitHub repository, Azure DevOps repository, or local path."""
     lock = load_lock()
     ensure_dirs()
@@ -141,17 +151,17 @@ def add(
         source = _resolve_source(lock_key, short_ref, branch)
     except Exception as e:
         console.print(f"[red]Error fetching source info for {short_ref}:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     try:
         zip_path = _download(lock_key, source)
     except requests.HTTPError as e:
         console.print(f"[red]HTTP error downloading {short_ref}:[/red] {e}")
-        print(e.response.text)
-        raise typer.Exit(1)
+        typer.echo(e.response.text)
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"[red]Error downloading {short_ref}:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     skill_paths = get_skill_paths(zip_path)
     available_skills = sorted(skill_paths.keys())
@@ -171,13 +181,17 @@ def add(
         if invalid:
             console.print(f"[yellow]Warning: Skills not found in {short_ref}: {', '.join(invalid)}[/yellow]")
         if already_installed:
-            console.print(f"[blue]Note: Skills already installed from {short_ref}: {', '.join(already_installed)}[/blue]")
+            console.print(
+                f"[blue]Note: Skills already installed from {short_ref}: {', '.join(already_installed)}[/blue]"
+            )
     else:
         available_paths = {k: v for k, v in skill_paths.items() if k not in installed_skills}
 
         if search:
             needle = search.casefold()
-            available_paths = {k: v for k, v in available_paths.items() if needle in k.casefold() or needle in v.casefold()}
+            available_paths = {
+                k: v for k, v in available_paths.items() if needle in k.casefold() or needle in v.casefold()
+            }
             if not available_paths:
                 console.print(f"[yellow]No skills matching '{search}' found in {short_ref}.[/yellow]")
                 return
@@ -207,7 +221,7 @@ def add(
     console.print(f"[green]Skills from {short_ref} installed successfully![/green]")
 
 
-def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optional[str], all_skills: bool = False) -> None:
+def _add_local(repo: str, lock: dict, skills: list[str] | None, search: str | None, all_skills: bool = False) -> None:
     local_path = resolve_local_path(repo)
     if not local_path.is_dir():
         console.print(f"[red]Local path does not exist or is not a directory: {local_path}[/red]")
@@ -239,7 +253,9 @@ def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optio
 
         if search:
             needle = search.casefold()
-            available_paths = {k: v for k, v in available_paths.items() if needle in k.casefold() or needle in v.casefold()}
+            available_paths = {
+                k: v for k, v in available_paths.items() if needle in k.casefold() or needle in v.casefold()
+            }
             if not available_paths:
                 console.print(f"[yellow]No skills matching '{search}' found in {display}.[/yellow]")
                 return
@@ -272,16 +288,15 @@ def _add_local(repo: str, lock: dict, skills: Optional[List[str]], search: Optio
 
 @app.command()
 def remove(
-    skill: Optional[List[str]] = typer.Option(None, "--skill", help="Skill name(s) to remove non-interactively."),
-    skills_from: Optional[str] = typer.Option(None, "--skills-from", help="Remove all skills from the given repo (lock-file key)."),
-):
+    skill: list[str] | None = typer.Option(None, "--skill", help="Skill name(s) to remove non-interactively."),
+    skills_from: str | None = typer.Option(
+        None, "--skills-from", help="Remove all skills from the given repo (lock-file key)."
+    ),
+) -> None:
     """Remove installed skills. Pass --skill or --skills-from to skip interactive selection."""
     lock = load_lock()
 
-    all_installed = []
-    for repo, data in lock["repos"].items():
-        for s in data["skills"]:
-            all_installed.append(f"{repo}: {s}")
+    all_installed = [f"{repo}: {s}" for repo, data in lock["repos"].items() for s in data["skills"]]
 
     if not all_installed:
         console.print("[yellow]No skills installed.[/yellow]")
@@ -328,7 +343,9 @@ def remove(
 
 
 @app.command()
-def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific repository to update (lock-file key)")):
+def update(
+    repo: str | None = typer.Option(None, "--repo", help="Specific repository to update (lock-file key)"),
+) -> None:
     """Update installed skills to the latest tracked release or branch commit."""
     lock = load_lock()
     repos_to_update = [repo] if repo else list(lock["repos"].keys())
@@ -348,7 +365,7 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
             continue
 
         repo_data = normalize_repo_data(lock["repos"][r])
-        short_ref = r[5:] if r.startswith("azdo:") else r
+        short_ref = r.removeprefix("azdo:")
         console.print(f"Checking updates for [cyan]{short_ref}[/cyan]...")
 
         try:
@@ -380,7 +397,7 @@ def update(repo: Optional[str] = typer.Option(None, "--repo", help="Specific rep
 
 
 @app.command()
-def sync():
+def sync() -> None:
     """Install all skills as defined in the lock file."""
     lock = load_lock()
     ensure_dirs()
@@ -404,7 +421,7 @@ def sync():
             continue
 
         source = get_sync_source(repo, repo_data)
-        short_ref = repo[5:] if repo.startswith("azdo:") else repo
+        short_ref = repo.removeprefix("azdo:")
         console.print(f"Syncing [cyan]{short_ref}[/cyan] at [green]{format_source_label(source)}[/green]...")
 
         try:
@@ -421,8 +438,10 @@ def sync():
 
 @app.command()
 def migrate(
-    input_file: Optional[Path] = typer.Argument(None, help="Path to skills-lock.json (defaults to .claude/skills-lock.json)"),
-):
+    input_file: Path | None = typer.Argument(
+        None, help="Path to skills-lock.json (defaults to .claude/skills-lock.json)"
+    ),
+) -> None:
     """Migrate a Claude Code skills-lock.json to the skillup lock format."""
     resolved = input_file if input_file is not None else settings.base_dir / "skills-lock.json"
 
@@ -434,7 +453,7 @@ def migrate(
         data = json.loads(resolved.read_text())
     except Exception as e:
         console.print(f"[red]Failed to parse {resolved}:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     skills_map: dict[str, Any] = data.get("skills", {})
     if not skills_map:
@@ -444,7 +463,9 @@ def migrate(
     repos: dict[str, list[str]] = {}
     for skill_name, skill_data in skills_map.items():
         if skill_data.get("sourceType") != "github":
-            console.print(f"[yellow]Skipping {skill_name}: unsupported sourceType '{skill_data.get('sourceType')}'[/yellow]")
+            console.print(
+                f"[yellow]Skipping {skill_name}: unsupported sourceType '{skill_data.get('sourceType')}'[/yellow]"
+            )
             continue
         repo = skill_data["source"]
         repos.setdefault(repo, []).append(skill_name)

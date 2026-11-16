@@ -1,19 +1,18 @@
 import os
 import shutil
 import subprocess
-from typing import Optional
 from urllib.parse import urlparse
 
 import requests
 from rich.console import Console
 
-from .http import session
-from .settings import RepoSource, settings
+from skillup.http import session
+from skillup.settings import RepoSource
 
 console = Console()
 
 
-def get_github_token() -> Optional[str]:
+def get_github_token() -> str | None:
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     if token:
         return token
@@ -72,7 +71,7 @@ def parse_github_repo(repo_or_url: str) -> str:
     return repo_or_url
 
 
-def get_repo_source(repo: str, branch: Optional[str] = None) -> RepoSource:
+def get_repo_source(repo: str, branch: str | None = None) -> RepoSource:
     if branch:
         commit = get_commit_sha(repo, branch)
         return RepoSource(

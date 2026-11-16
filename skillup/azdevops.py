@@ -1,9 +1,9 @@
 import os
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import quote, unquote, urlparse
 
-from .http import session
-from .settings import RepoSource
+from skillup.http import session
+from skillup.settings import RepoSource
 
 # Azure DevOps resource ID — used as the OAuth2 scope for DefaultAzureCredential
 _AZDEVOPS_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"
@@ -18,7 +18,7 @@ def parse_azdevops_repo(repo_or_url: str) -> str:
     - ``https://user@dev.azure.com/org/project/_git/repo``
     - ``https://org.visualstudio.com/project/_git/repo``  (legacy)
 
-    Names are URL-decoded so ``BMS%20%E2%80%93%20OnPrem`` becomes ``BMS – OnPrem``.
+    Names are URL-decoded, e.g. ``%20`` becomes a space and ``%E2%80%93`` becomes an en dash.
     The returned shorthand uses ``/`` as separator; names must not contain slashes.
     """
     parsed = urlparse(repo_or_url)
@@ -55,7 +55,7 @@ def parse_azdevops_repo(repo_or_url: str) -> str:
     return repo_or_url
 
 
-def get_azdevops_token() -> Optional[str]:
+def get_azdevops_token() -> str | None:
     """Return a bearer token for Azure DevOps.
 
     Priority:
@@ -125,7 +125,7 @@ def _parse_ref(full_ref: str) -> tuple[str, str, str]:
     return parts[0], parts[1], parts[2]
 
 
-def get_azdevops_repo_source(full_ref: str, branch: Optional[str] = None) -> RepoSource:
+def get_azdevops_repo_source(full_ref: str, branch: str | None = None) -> RepoSource:
     """Resolve an Azure DevOps repo to a ``RepoSource``.
 
     Args:
@@ -152,10 +152,7 @@ def get_azdevops_sync_source(full_ref: str, repo_data: dict[str, Any]) -> RepoSo
     ref = repo_data.get("ref") or repo_data.get("branch") or "main"
     commit = repo_data.get("commit")
 
-    if commit:
-        zip_url = _zip_url(org, project, repo, commit, "commit")
-    else:
-        zip_url = _zip_url(org, project, repo, ref, "branch")
+    zip_url = _zip_url(org, project, repo, commit, "commit") if commit else _zip_url(org, project, repo, ref, "branch")
 
     return RepoSource(
         kind=repo_data.get("source", "branch"),

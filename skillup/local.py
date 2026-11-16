@@ -10,9 +10,7 @@ def is_local_path(s: str) -> bool:
         return True
     if re.match(r"^[a-zA-Z]:[/\\]", s):
         return True
-    if urlparse(s).scheme == "file":
-        return True
-    return False
+    return urlparse(s).scheme == "file"
 
 
 def resolve_local_path(s: str) -> Path:
@@ -20,6 +18,7 @@ def resolve_local_path(s: str) -> Path:
     parsed = urlparse(s)
     if parsed.scheme == "file":
         from urllib.request import url2pathname
+
         return Path(url2pathname(parsed.path)).resolve()
     return Path(s).resolve()
 
@@ -38,7 +37,7 @@ def get_skill_paths_local(local_path: Path) -> dict[str, str]:
 
 def install_skill_local(skill_name: str, local_path: Path) -> None:
     """Copy a skill directory from local_path into all configured target dirs."""
-    from .settings import settings
+    from skillup.settings import settings
 
     skill_dir: Path | None = None
     for p in local_path.rglob("*"):

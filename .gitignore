@@ -10,3 +10,8 @@ wheels/
 .venv
 .agents/skills
 .claude/skills
+
+# Worktrees and code index
+.worktrees/
+.claude/worktrees/
+.codegraph/

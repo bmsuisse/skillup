@@ -1,9 +1,11 @@
-from skillup.cli import app
 from typer.testing import CliRunner
+
+from skillup.cli import app
 
 runner = CliRunner()
 
-def test_help():
+
+def test_help() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "add" in result.stdout

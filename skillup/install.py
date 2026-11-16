@@ -1,13 +1,12 @@
 import shutil
 import zipfile
 from pathlib import Path
-from typing import List, Optional
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from .github import get_github_headers
-from .http import session
-from .settings import settings
+from skillup.github import get_github_headers
+from skillup.http import session
+from skillup.settings import settings
 
 
 def ensure_dirs() -> None:
@@ -20,7 +19,7 @@ def download_release(
     repo: str,
     version: str,
     url: str,
-    headers: Optional[dict[str, str]] = None,
+    headers: dict[str, str] | None = None,
 ) -> Path:
     safe_repo = repo.replace("/", "_").replace(":", "_")
     cache_path = settings.cache_dir / f"{safe_repo}_{version}.zip"
@@ -40,7 +39,7 @@ def download_release(
 
         response = session().get(url, headers=headers, stream=True)
         response.raise_for_status()
-        with open(cache_path, "wb") as f:
+        with cache_path.open("wb") as f:
             shutil.copyfileobj(response.raw, f)
 
     return cache_path
@@ -60,7 +59,7 @@ def get_skill_paths(zip_path: Path) -> dict[str, str]:
     return skills
 
 
-def get_skills_in_zip(zip_path: Path) -> List[str]:
+def get_skills_in_zip(zip_path: Path) -> list[str]:
     return sorted(get_skill_paths(zip_path).keys())
 
 
@@ -70,11 +69,7 @@ def install_skill(skill_name: str, zip_path: Path) -> None:
         for name in z.namelist():
             parts = Path(name).parts
             # Locate SKILL.md in a folder named skill_name anywhere in the zip
-            if (
-                len(parts) >= 2
-                and parts[-1].upper() == "SKILL.MD"
-                and parts[-2] == skill_name
-            ):
+            if len(parts) >= 2 and parts[-1].upper() == "SKILL.MD" and parts[-2] == skill_name:
                 skill_prefix = "/".join(parts[:-1]) + "/"
                 break
 
@@ -90,7 +85,7 @@ def install_skill(skill_name: str, zip_path: Path) -> None:
             dest.mkdir(parents=True, exist_ok=True)
 
             for file_info in skill_files:
-                rel_path_str = file_info[len(skill_prefix):]
+                rel_path_str = file_info[len(skill_prefix) :]
                 if not rel_path_str:
                     continue
 
@@ -100,5 +95,5 @@ def install_skill(skill_name: str, zip_path: Path) -> None:
                     target_file.mkdir(parents=True, exist_ok=True)
                 else:
                     target_file.parent.mkdir(parents=True, exist_ok=True)
-                    with z.open(file_info) as source, open(target_file, "wb") as target:
+                    with z.open(file_info) as source, target_file.open("wb") as target:
                         shutil.copyfileobj(source, target)

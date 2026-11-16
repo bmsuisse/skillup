@@ -9,7 +9,7 @@ description = "A minimal CLI to manage agent skills from GitHub releases."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "typer",
+    "typer>=0.12.5",
     "rich",
     "questionary",
     "requests",
@@ -21,8 +21,11 @@ azure = ["azure-identity>=1.16"]
 
 [dependency-groups]
 dev = [
+    "azure-identity>=1.16",
     "pyright",
     "pytest",
+    "ruff>=0.17.4",
+    "ty>=0.0.100",
 ]
 
 [project.scripts]
@@ -30,6 +33,53 @@ skillup = "skillup.cli:app"
 
 [tool.uv]
 package = true
+exclude-newer = "5 days"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["skillup"]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py311"
+extend-exclude = ["*.md", ".worktrees", ".claude"]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I",   # pycodestyle, pyflakes, isort
+    "UP",            # pyupgrade - X | None, modern syntax
+    "B",             # bugbear - mutable defaults etc.
+    "ANN",           # full type annotations
+    "SIM", "C4",     # simplifiable code, needless comprehensions/casts
+    "PERF", "FURB",  # needless loops, manual list/dict building
+    "ASYNC",         # blocking calls inside async def
+    "RUF",
+    "N",             # PEP 8 naming
+    "PTH",           # pathlib instead of os.path
+    "TID",           # absolute imports only, banned APIs
+    "RET", "PIE",    # consistent returns, misc simplifications
+    "A",             # no shadowing builtins
+    "T20",           # no print()
+    "LOG",           # logging API misuse
+    "DTZ",           # timezone-aware datetimes
+    "FLY",           # f-string instead of str.join on literals
+    "PLE", "PLW",    # pylint errors + warnings
+]
+ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any prek hook, not an error
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument"]  # Typer declares options as parameter defaults
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ty.src]
+exclude = [".worktrees", ".claude"]

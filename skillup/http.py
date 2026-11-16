@@ -1,13 +1,11 @@
-import truststore
+from functools import cache
+
 import requests
+import truststore
 
 truststore.inject_into_ssl()
 
-_session: requests.Session | None = None
 
-
+@cache
 def session() -> requests.Session:
-    global _session
-    if _session is None:
-        _session = requests.Session()
-    return _session
+    return requests.Session()
