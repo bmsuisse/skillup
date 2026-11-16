@@ -100,9 +100,11 @@ class TestGetAzdevopsToken:
         mock_cred = MagicMock()
         mock_cred.get_token.return_value = MagicMock(token="az-bearer")
 
-        with patch.dict(os.environ, {}, clear=True):
-            with patch.dict("sys.modules", {"azure.identity": MagicMock(DefaultAzureCredential=lambda: mock_cred)}):
-                token = get_azdevops_token()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.dict("sys.modules", {"azure.identity": MagicMock(DefaultAzureCredential=lambda: mock_cred)}),
+        ):
+            token = get_azdevops_token()
 
         assert token == "az-bearer"
 
@@ -114,9 +116,11 @@ class TestGetAzdevopsToken:
 
     def test_env_var_takes_priority_over_credential(self) -> None:
         mock_cred = MagicMock()
-        with patch.dict(os.environ, {"AZURE_DEVOPS_TOKEN": "pat-wins"}):
-            with patch.dict("sys.modules", {"azure.identity": MagicMock(DefaultAzureCredential=lambda: mock_cred)}):
-                token = get_azdevops_token()
+        with (
+            patch.dict(os.environ, {"AZURE_DEVOPS_TOKEN": "pat-wins"}),
+            patch.dict("sys.modules", {"azure.identity": MagicMock(DefaultAzureCredential=lambda: mock_cred)}),
+        ):
+            token = get_azdevops_token()
         assert token == "pat-wins"
         mock_cred.get_token.assert_not_called()
 
@@ -133,9 +137,11 @@ class TestGetAzdevopsHeaders:
         assert headers == {"Authorization": "Bearer tok"}
 
     def test_raises_when_no_token(self) -> None:
-        with patch("skillup.azdevops.get_azdevops_token", return_value=None):
-            with pytest.raises(RuntimeError, match="AZURE_DEVOPS_TOKEN"):
-                get_azdevops_headers()
+        with (
+            patch("skillup.azdevops.get_azdevops_token", return_value=None),
+            pytest.raises(RuntimeError, match="AZURE_DEVOPS_TOKEN"),
+        ):
+            get_azdevops_headers()
 
 
 # ---------------------------------------------------------------------------
