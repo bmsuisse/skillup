@@ -547,6 +547,7 @@ azure = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "azure-identity" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "ruff" },
@@ -566,6 +567,7 @@ provides-extras = ["azure"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "azure-identity", specifier = ">=1.16" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "ruff", specifier = ">=0.17.4" },
