@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from prompt_toolkit import Application
-from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.layout.controls import FormattedTextControl
@@ -138,23 +138,23 @@ def tree_checkbox(prompt: str, skill_paths: dict[str, str]) -> list[str] | None:
     kb = KeyBindings()
 
     @kb.add("up")
-    def _(e):
+    def _(e: KeyPressEvent) -> None:
         state["cursor"] = max(0, state["cursor"] - 1)
 
     @kb.add("down")
-    def _(e):
+    def _(e: KeyPressEvent) -> None:
         state["cursor"] = min(len(nodes) - 1, state["cursor"] + 1)
 
     @kb.add("space")
-    def _(e):
+    def _(e: KeyPressEvent) -> None:
         toggle(state["cursor"], nodes)
 
     @kb.add("enter")
-    def _(e):
+    def _(e: KeyPressEvent) -> None:
         e.app.exit()
 
     @kb.add("c-c")
-    def _(e):
+    def _(e: KeyPressEvent) -> None:
         state["cancelled"] = True
         e.app.exit()
 

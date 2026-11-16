@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import requests
@@ -14,40 +15,40 @@ from skillup.github import (
 from skillup.install import download_release
 
 
-def test_parse_github_repo_shorthand():
+def test_parse_github_repo_shorthand() -> None:
     assert parse_github_repo("owner/repo") == "owner/repo"
 
 
-def test_parse_github_repo_full_url():
+def test_parse_github_repo_full_url() -> None:
     assert parse_github_repo("https://github.com/owner/repo") == "owner/repo"
 
 
-def test_parse_github_repo_git_suffix():
+def test_parse_github_repo_git_suffix() -> None:
     assert parse_github_repo("https://github.com/owner/repo.git") == "owner/repo"
 
 
-def test_parse_github_repo_www():
+def test_parse_github_repo_www() -> None:
     assert parse_github_repo("https://www.github.com/owner/repo") == "owner/repo"
 
 
-def test_parse_github_repo_unknown_url_passthrough():
+def test_parse_github_repo_unknown_url_passthrough() -> None:
     url = "https://example.com/owner/repo"
     assert parse_github_repo(url) == url
 
 
-def test_get_github_token_from_env():
+def test_get_github_token_from_env() -> None:
     with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token"}):
         assert get_github_token() == "env_token"
 
 
-def test_get_github_token_from_gh_env():
+def test_get_github_token_from_gh_env() -> None:
     with patch.dict(os.environ, {"GH_TOKEN": "gh_env_token"}):
         if "GITHUB_TOKEN" in os.environ:
             del os.environ["GITHUB_TOKEN"]
         assert get_github_token() == "gh_env_token"
 
 
-def test_get_github_token_from_cli():
+def test_get_github_token_from_cli() -> None:
     with (
         patch.dict(os.environ, {}, clear=True),
         patch("shutil.which", return_value="/usr/bin/gh"),
@@ -57,7 +58,7 @@ def test_get_github_token_from_cli():
         assert get_github_token() == "cli_token"
 
 
-def test_get_github_token_not_found():
+def test_get_github_token_not_found() -> None:
     with (
         patch.dict(os.environ, {}, clear=True),
         patch("shutil.which", return_value=None),
@@ -69,7 +70,7 @@ def test_get_github_token_not_found():
 
 
 @patch("skillup.github.get_github_token")
-def test_get_latest_release_uses_token(mock_token):
+def test_get_latest_release_uses_token(mock_token: MagicMock) -> None:
     mock_token.return_value = "test_token"
     mock_response = MagicMock()
     mock_response.json.return_value = {"tag_name": "v1.0.0", "zipball_url": "url"}
@@ -84,7 +85,7 @@ def test_get_latest_release_uses_token(mock_token):
 
 
 @patch("skillup.github.get_github_token")
-def test_get_commit_sha_uses_token(mock_token):
+def test_get_commit_sha_uses_token(mock_token: MagicMock) -> None:
     mock_token.return_value = "test_token"
     mock_response = MagicMock()
     mock_response.json.return_value = {"sha": "abc123"}
@@ -101,7 +102,7 @@ def test_get_commit_sha_uses_token(mock_token):
 
 @patch("skillup.github.get_commit_sha")
 @patch("skillup.github.get_latest_release")
-def test_get_repo_source_falls_back_to_main_branch(mock_latest, mock_commit):
+def test_get_repo_source_falls_back_to_main_branch(mock_latest: MagicMock, mock_commit: MagicMock) -> None:
     response = MagicMock(status_code=404)
     mock_latest.side_effect = requests.HTTPError(response=response)
     mock_commit.return_value = "main-sha"
@@ -117,7 +118,9 @@ def test_get_repo_source_falls_back_to_main_branch(mock_latest, mock_commit):
 @patch("skillup.github.get_github_token")
 @patch("shutil.copyfileobj")
 @patch("builtins.open", new_callable=MagicMock)
-def test_download_release_uses_token(mock_open, mock_copy, mock_token, tmp_path):
+def test_download_release_uses_token(
+    mock_open: MagicMock, mock_copy: MagicMock, mock_token: MagicMock, tmp_path: Path
+) -> None:
     mock_token.return_value = "test_token"
     mock_response = MagicMock()
     mock_response.raw = MagicMock()

@@ -1,4 +1,5 @@
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,7 +19,7 @@ def _make_zip(tmp_path: Path, entries: list[str]) -> Path:
 
 
 @pytest.fixture
-def temp_dirs(tmp_path):
+def temp_dirs(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     fake_cwd = tmp_path / "cwd"
@@ -40,7 +41,7 @@ def temp_dirs(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_get_skills_flat(tmp_path):
+def test_get_skills_flat(tmp_path: Path) -> None:
     """Flat skills (skills/<name>/SKILL.md) are discovered correctly."""
     zip_path = _make_zip(
         tmp_path,
@@ -54,7 +55,7 @@ def test_get_skills_flat(tmp_path):
     assert skills == ["github", "pdf"]
 
 
-def test_get_skills_nested(tmp_path):
+def test_get_skills_nested(tmp_path: Path) -> None:
     """Nested skills (skills/<category>/<name>/SKILL.md) use just the immediate parent as skill name."""
     zip_path = _make_zip(
         tmp_path,
@@ -68,7 +69,7 @@ def test_get_skills_nested(tmp_path):
     assert skills == ["diagnose", "summarize", "tdd"]
 
 
-def test_get_skills_mixed(tmp_path):
+def test_get_skills_mixed(tmp_path: Path) -> None:
     """Flat and nested skills can coexist; skill name is always the immediate parent folder."""
     zip_path = _make_zip(
         tmp_path,
@@ -81,7 +82,7 @@ def test_get_skills_mixed(tmp_path):
     assert skills == ["pdf", "tdd"]
 
 
-def test_get_skills_ignores_no_skill_md(tmp_path):
+def test_get_skills_ignores_no_skill_md(tmp_path: Path) -> None:
     """Folders without SKILL.md are not returned."""
     zip_path = _make_zip(
         tmp_path,
@@ -94,7 +95,7 @@ def test_get_skills_ignores_no_skill_md(tmp_path):
     assert skills == ["real"]
 
 
-def test_get_skills_at_zip_root(tmp_path):
+def test_get_skills_at_zip_root(tmp_path: Path) -> None:
     """Skills at the zip root level (no containing folder) are also discovered."""
     zip_path = _make_zip(
         tmp_path,
@@ -107,7 +108,7 @@ def test_get_skills_at_zip_root(tmp_path):
     assert skills == ["another", "mything"]
 
 
-def test_get_skills_case_insensitive(tmp_path):
+def test_get_skills_case_insensitive(tmp_path: Path) -> None:
     """SKILL.MD is matched case-insensitively."""
     zip_path = _make_zip(
         tmp_path,
@@ -124,7 +125,7 @@ def test_get_skills_case_insensitive(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_install_flat_skill(tmp_path, temp_dirs):
+def test_install_flat_skill(tmp_path: Path, temp_dirs: tuple[Path, Path]) -> None:
     """A flat skill is installed to both target directories."""
     zip_path = _make_zip(
         tmp_path,
@@ -144,7 +145,7 @@ def test_install_flat_skill(tmp_path, temp_dirs):
     assert (settings.skills_dir_claude / "pdf" / "SKILL.md").exists()
 
 
-def test_install_nested_skill(tmp_path, temp_dirs):
+def test_install_nested_skill(tmp_path: Path, temp_dirs: tuple[Path, Path]) -> None:
     """A skill nested under a category subfolder is installed using just the skill folder name."""
     zip_path = _make_zip(
         tmp_path,
@@ -164,7 +165,7 @@ def test_install_nested_skill(tmp_path, temp_dirs):
     assert (settings.skills_dir_claude / "tdd" / "SKILL.md").exists()
 
 
-def test_install_skill_unknown_does_nothing(tmp_path, temp_dirs):
+def test_install_skill_unknown_does_nothing(tmp_path: Path, temp_dirs: tuple[Path, Path]) -> None:
     """Requesting a non-existent skill name does not raise and creates nothing."""
     zip_path = _make_zip(
         tmp_path,

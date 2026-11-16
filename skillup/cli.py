@@ -83,7 +83,7 @@ def main(
     version: bool | None = typer.Option(
         None, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."
     ),
-):
+) -> None:
     """Minimal CLI to manage agent skills from GitHub releases or branches."""
     settings.is_global = is_global
     if lock_file is not None:
@@ -97,7 +97,7 @@ app.add_typer(config_app, name="config")
 @config_app.command("set-dirs")
 def config_set_dirs(
     dirs: list[str] = typer.Argument(..., help="Target directories for skill installation (space-separated)"),
-):
+) -> None:
     """Set the target directories where skills are installed. Persisted in the lock file."""
     lock = load_lock()
     settings.target_dirs_override = [Path(d) for d in dirs]
@@ -108,7 +108,7 @@ def config_set_dirs(
 
 
 @config_app.command("show")
-def config_show():
+def config_show() -> None:
     """Show current skillup configuration."""
     lock = load_lock()
     console.print(f"Lock file:    [cyan]{settings.lock_file}[/cyan]")
@@ -136,7 +136,7 @@ def add(
         None, "--search", "-f", help="Filter skills shown in the tree (matches skill name or path, case-insensitive)"
     ),
     all_skills: bool = typer.Option(False, "--all-skills", help="Install all available skills non-interactively"),
-):
+) -> None:
     """Add skills from a GitHub repository, Azure DevOps repository, or local path."""
     lock = load_lock()
     ensure_dirs()
@@ -292,7 +292,7 @@ def remove(
     skills_from: str | None = typer.Option(
         None, "--skills-from", help="Remove all skills from the given repo (lock-file key)."
     ),
-):
+) -> None:
     """Remove installed skills. Pass --skill or --skills-from to skip interactive selection."""
     lock = load_lock()
 
@@ -346,7 +346,9 @@ def remove(
 
 
 @app.command()
-def update(repo: str | None = typer.Option(None, "--repo", help="Specific repository to update (lock-file key)")):
+def update(
+    repo: str | None = typer.Option(None, "--repo", help="Specific repository to update (lock-file key)"),
+) -> None:
     """Update installed skills to the latest tracked release or branch commit."""
     lock = load_lock()
     repos_to_update = [repo] if repo else list(lock["repos"].keys())
@@ -398,7 +400,7 @@ def update(repo: str | None = typer.Option(None, "--repo", help="Specific reposi
 
 
 @app.command()
-def sync():
+def sync() -> None:
     """Install all skills as defined in the lock file."""
     lock = load_lock()
     ensure_dirs()
@@ -442,7 +444,7 @@ def migrate(
     input_file: Path | None = typer.Argument(
         None, help="Path to skills-lock.json (defaults to .claude/skills-lock.json)"
     ),
-):
+) -> None:
     """Migrate a Claude Code skills-lock.json to the skillup lock format."""
     resolved = input_file if input_file is not None else settings.base_dir / "skills-lock.json"
 

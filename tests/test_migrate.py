@@ -1,6 +1,7 @@
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -13,7 +14,7 @@ runner = CliRunner()
 
 
 @pytest.fixture
-def temp_dirs(tmp_path):
+def temp_dirs(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     fake_cwd = tmp_path / "cwd"
@@ -31,7 +32,7 @@ def temp_dirs(tmp_path):
 
 
 @pytest.fixture
-def mock_network():
+def mock_network() -> Iterator[dict[str, MagicMock]]:
     with (
         patch("skillup.github.get_latest_release") as mock_latest,
         patch("skillup.github.get_commit_sha") as mock_commit,
@@ -47,14 +48,14 @@ def _write_skills_lock(directory: Path, skills: dict) -> Path:
     return path
 
 
-def test_migrate_missing_file(temp_dirs):
+def test_migrate_missing_file(temp_dirs: tuple[Path, Path]) -> None:
     fake_home, fake_cwd = temp_dirs
     result = runner.invoke(app, ["migrate", str(fake_cwd / "nonexistent.json")])
     assert result.exit_code == 1
     assert "File not found" in result.stdout
 
 
-def test_migrate_creates_lock(temp_dirs, mock_network):
+def test_migrate_creates_lock(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
@@ -82,7 +83,7 @@ def test_migrate_creates_lock(temp_dirs, mock_network):
     assert "coding-guidelines" in bms["skills"]
 
 
-def test_migrate_groups_skills_by_repo(temp_dirs, mock_network):
+def test_migrate_groups_skills_by_repo(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
@@ -102,7 +103,7 @@ def test_migrate_groups_skills_by_repo(temp_dirs, mock_network):
     assert set(repo_entry["skills"]) == {"skill-a", "skill-b"}
 
 
-def test_migrate_skips_non_github_source(temp_dirs, mock_network):
+def test_migrate_skips_non_github_source(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
@@ -122,7 +123,7 @@ def test_migrate_skips_non_github_source(temp_dirs, mock_network):
     assert len(lock["repos"]) == 1
 
 
-def test_migrate_no_github_skills(temp_dirs):
+def test_migrate_no_github_skills(temp_dirs: tuple[Path, Path]) -> None:
     fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
@@ -137,7 +138,7 @@ def test_migrate_no_github_skills(temp_dirs):
     assert "No GitHub skills found" in result.stdout
 
 
-def test_migrate_custom_input_path(temp_dirs, mock_network):
+def test_migrate_custom_input_path(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     fake_home, fake_cwd = temp_dirs
 
     custom_path = fake_cwd / "custom-lock.json"
@@ -160,7 +161,7 @@ def test_migrate_custom_input_path(temp_dirs, mock_network):
     assert "my-skill" in lock["repos"]["owner/repo"]["skills"]
 
 
-def test_migrate_global_flag(temp_dirs, mock_network):
+def test_migrate_global_flag(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(

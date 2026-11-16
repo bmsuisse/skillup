@@ -1,5 +1,7 @@
 import json
 import zipfile
+from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,7 +19,7 @@ SKILLS = ["github", "prek", "nicegui"]
 
 
 @pytest.fixture
-def skill_zip(tmp_path):
+def skill_zip(tmp_path: Path) -> Path:
     """A real zip file with a nested skill tree matching what GitHub serves."""
     zip_path = tmp_path / "skills-v1.0.0.zip"
     with zipfile.ZipFile(zip_path, "w") as z:
@@ -27,7 +29,7 @@ def skill_zip(tmp_path):
 
 
 @pytest.fixture
-def temp_dirs(tmp_path):
+def temp_dirs(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
     """Fixture to mock HOME, CWD and TEMP and redirect all paths to a temp directory."""
     fake_home = tmp_path / "home"
     fake_home.mkdir()
@@ -46,7 +48,7 @@ def temp_dirs(tmp_path):
 
 
 @pytest.fixture
-def mock_network(skill_zip):
+def mock_network(skill_zip: Path) -> Iterator[dict[str, MagicMock]]:
     """Mock only the HTTP layer; use a real zip for skill discovery and installation."""
     with (
         patch("skillup.github.get_latest_release") as mock_latest,
@@ -69,7 +71,7 @@ def mock_network(skill_zip):
         }
 
 
-def test_add_skills_local_default(temp_dirs, mock_network):
+def test_add_skills_local_default(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that skills are installed to CWD by default."""
     fake_home, fake_cwd = temp_dirs
     repo = "bmsuisse/skills"
@@ -92,7 +94,7 @@ def test_add_skills_local_default(temp_dirs, mock_network):
     assert not (fake_home / ".agents").exists()
 
 
-def test_add_skills_global(temp_dirs, mock_network):
+def test_add_skills_global(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that skills are installed to HOME with --global flag."""
     fake_home, fake_cwd = temp_dirs
     repo = "bmsuisse/skills"
@@ -114,7 +116,7 @@ def test_add_skills_global(temp_dirs, mock_network):
     assert not (fake_cwd / ".agents").exists()
 
 
-def test_remove_skills_local(temp_dirs, mock_network):
+def test_remove_skills_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test removing skills from local installation."""
     fake_home, fake_cwd = temp_dirs
     repo = "test/repo"
@@ -138,7 +140,7 @@ def test_remove_skills_local(temp_dirs, mock_network):
     assert not (fake_cwd / ".agents" / "skills.lock.json").exists()
 
 
-def test_sync_local(temp_dirs, mock_network):
+def test_sync_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test sync in local directory."""
     fake_home, fake_cwd = temp_dirs
     repo = "bmsuisse/skills"
@@ -155,7 +157,7 @@ def test_sync_local(temp_dirs, mock_network):
     mock_network["download"].assert_called_with(repo, "v1.0.0", f"https://api.github.com/repos/{repo}/zipball/v1.0.0")
 
 
-def test_update_local(temp_dirs, mock_network):
+def test_update_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test update in local directory."""
     fake_home, fake_cwd = temp_dirs
     repo = "bmsuisse/skills"
@@ -178,7 +180,7 @@ def test_update_local(temp_dirs, mock_network):
     assert lock["repos"][repo]["commit"] == "release-sha-2"
 
 
-def test_add_skills_from_branch(temp_dirs, mock_network):
+def test_add_skills_from_branch(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that branch-based installs store branch and commit metadata."""
     fake_home, fake_cwd = temp_dirs
     repo = "anthropics/skills"
@@ -196,7 +198,7 @@ def test_add_skills_from_branch(temp_dirs, mock_network):
     )
 
 
-def test_add_skills_falls_back_to_main_branch(temp_dirs, mock_network):
+def test_add_skills_falls_back_to_main_branch(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that repos without releases fall back to main."""
     fake_home, fake_cwd = temp_dirs
     repo = "anthropics/skills"
@@ -216,7 +218,7 @@ def test_add_skills_falls_back_to_main_branch(temp_dirs, mock_network):
     )
 
 
-def test_cache_dir_override(temp_dirs, mock_network):
+def test_cache_dir_override(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that SKILLUP_CACHE_DIR environment variable overrides the default cache dir."""
     fake_home, fake_cwd = temp_dirs
     custom_cache = fake_home / "custom_cache"
@@ -237,7 +239,7 @@ def test_cache_dir_override(temp_dirs, mock_network):
 
 
 @pytest.fixture
-def nested_skill_zip(tmp_path):
+def nested_skill_zip(tmp_path: Path) -> Path:
     """Zip with skills spread across two subdirectories."""
     zip_path = tmp_path / "nested.zip"
     with zipfile.ZipFile(zip_path, "w") as z:
@@ -247,7 +249,7 @@ def nested_skill_zip(tmp_path):
     return zip_path
 
 
-def test_tree_nodes_structure():
+def test_tree_nodes_structure() -> None:
     """build_flat_nodes produces directory nodes and leaf nodes in DFS order."""
     from skillup._tree_ui import build_flat_nodes
 
@@ -271,7 +273,7 @@ def test_tree_nodes_structure():
     assert values.index("saw") > tools_idx
 
 
-def test_toggle_dir_selects_children():
+def test_toggle_dir_selects_children() -> None:
     """Toggling a dir node checks all skills beneath it."""
     from skillup._tree_ui import build_flat_nodes, dir_state, toggle
 
@@ -285,7 +287,7 @@ def test_toggle_dir_selects_children():
     assert all(nodes[c].checked for c in nodes[tools_idx].children)
 
 
-def test_toggle_dir_partial_then_full():
+def test_toggle_dir_partial_then_full() -> None:
     """Dir shows partial state when only some children are checked; toggling again checks all."""
     from skillup._tree_ui import build_flat_nodes, dir_state, toggle
 
@@ -304,7 +306,7 @@ def test_toggle_dir_partial_then_full():
     assert dir_state(tools_idx, nodes) == "none"
 
 
-def test_add_interactive_subtree_selection(temp_dirs, nested_skill_zip):
+def test_add_interactive_subtree_selection(temp_dirs: tuple[Path, Path], nested_skill_zip: Path) -> None:
     """Selecting a directory in interactive mode installs all skills under it."""
     fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
@@ -326,7 +328,7 @@ def test_add_interactive_subtree_selection(temp_dirs, nested_skill_zip):
     assert sorted(lock["repos"][repo]["skills"]) == ["hammer", "saw"]
 
 
-def test_add_search_filter(temp_dirs, nested_skill_zip):
+def test_add_search_filter(temp_dirs: tuple[Path, Path], nested_skill_zip: Path) -> None:
     """--search filters the tree to skills whose name or path contains the term."""
     fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
@@ -346,7 +348,7 @@ def test_add_search_filter(temp_dirs, nested_skill_zip):
     assert "readme" not in passed_paths
 
 
-def test_add_search_no_match(temp_dirs, nested_skill_zip):
+def test_add_search_no_match(temp_dirs: tuple[Path, Path], nested_skill_zip: Path) -> None:
     """--search with no matching skills exits early with a message."""
     fake_home, fake_cwd = temp_dirs
     repo = "org/nested"

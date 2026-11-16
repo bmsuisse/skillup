@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -13,7 +14,7 @@ runner = CliRunner()
 
 
 @pytest.fixture
-def temp_dirs(tmp_path):
+def temp_dirs(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     fake_cwd = tmp_path / "cwd"
@@ -30,7 +31,7 @@ def temp_dirs(tmp_path):
         yield fake_home, fake_cwd
 
 
-def test_sync_no_lock(temp_dirs):
+def test_sync_no_lock(temp_dirs: tuple[Path, Path]) -> None:
     result = runner.invoke(app, ["sync"])
     assert result.exit_code == 0
     assert "No skills defined in lock file" in result.stdout
@@ -38,7 +39,7 @@ def test_sync_no_lock(temp_dirs):
 
 @patch("skillup.cli.download_release")
 @patch("skillup.cli.install_skill")
-def test_sync_with_lock(mock_install, mock_download, temp_dirs):
+def test_sync_with_lock(mock_install: MagicMock, mock_download: MagicMock, temp_dirs: tuple[Path, Path]) -> None:
     fake_home, fake_cwd = temp_dirs
     repo = "test/repo"
     tag = "v1.0.0"
