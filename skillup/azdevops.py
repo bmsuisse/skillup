@@ -2,8 +2,8 @@ import os
 from typing import Any
 from urllib.parse import quote, unquote, urlparse
 
-from .http import session
-from .settings import RepoSource
+from skillup.http import session
+from skillup.settings import RepoSource
 
 # Azure DevOps resource ID — used as the OAuth2 scope for DefaultAzureCredential
 _AZDEVOPS_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"

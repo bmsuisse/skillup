@@ -6,8 +6,8 @@ from urllib.parse import urlparse
 import requests
 from rich.console import Console
 
-from .http import session
-from .settings import RepoSource
+from skillup.http import session
+from skillup.settings import RepoSource
 
 console = Console()
 

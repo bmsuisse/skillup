@@ -39,7 +39,7 @@ def get_skill_paths_local(local_path: Path) -> dict[str, str]:
 
 def install_skill_local(skill_name: str, local_path: Path) -> None:
     """Copy a skill directory from local_path into all configured target dirs."""
-    from .settings import settings
+    from skillup.settings import settings
 
     skill_dir: Path | None = None
     for p in local_path.rglob("*"):

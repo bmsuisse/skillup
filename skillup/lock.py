@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .settings import RepoSource, settings
+from skillup.settings import RepoSource, settings
 
 
 def load_lock() -> dict:
@@ -86,7 +86,7 @@ def apply_source(repo_data: dict[str, Any], source: RepoSource) -> dict[str, Any
 
 def get_sync_source(repo: str, repo_data: dict[str, Any]) -> RepoSource:
     if repo.startswith("azdo:"):
-        from .azdevops import get_azdevops_sync_source
+        from skillup.azdevops import get_azdevops_sync_source
 
         return get_azdevops_sync_source(repo[5:], repo_data)
 

@@ -4,9 +4,9 @@ from pathlib import Path
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from .github import get_github_headers
-from .http import session
-from .settings import settings
+from skillup.github import get_github_headers
+from skillup.http import session
+from skillup.settings import settings
 
 
 def ensure_dirs() -> None:

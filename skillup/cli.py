@@ -10,12 +10,12 @@ import requests
 import typer
 from rich.console import Console
 
-from ._tree_ui import tree_checkbox
-from .github import get_repo_source, parse_github_repo
-from .install import download_release, ensure_dirs, get_skill_paths, install_skill
-from .local import get_skill_paths_local, install_skill_local, is_local_path, resolve_local_path
-from .lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
-from .settings import RepoSource, format_source_label, settings
+from skillup._tree_ui import tree_checkbox
+from skillup.github import get_repo_source, parse_github_repo
+from skillup.install import download_release, ensure_dirs, get_skill_paths, install_skill
+from skillup.local import get_skill_paths_local, install_skill_local, is_local_path, resolve_local_path
+from skillup.lock import apply_source, get_sync_source, load_lock, normalize_repo_data, save_lock
+from skillup.settings import RepoSource, format_source_label, settings
 
 app = typer.Typer(
     help=f"skillup {pkg_version('skillup')} — Minimal CLI to manage agent skills from GitHub releases or branches."
@@ -50,7 +50,7 @@ def _parse_repo_input(repo_or_url: str) -> tuple[str, str]:
     """
     provider = _detect_provider(repo_or_url)
     if provider == "azdevops":
-        from .azdevops import parse_azdevops_repo
+        from skillup.azdevops import parse_azdevops_repo
 
         short_ref = parse_azdevops_repo(repo_or_url)
         return f"azdo:{short_ref}", short_ref
@@ -60,7 +60,7 @@ def _parse_repo_input(repo_or_url: str) -> tuple[str, str]:
 
 def _resolve_source(lock_key: str, short_ref: str, branch: str | None = None) -> RepoSource:
     if lock_key.startswith("azdo:"):
-        from .azdevops import get_azdevops_repo_source
+        from skillup.azdevops import get_azdevops_repo_source
 
         return get_azdevops_repo_source(short_ref, branch)
     return get_repo_source(short_ref, branch)
@@ -68,7 +68,7 @@ def _resolve_source(lock_key: str, short_ref: str, branch: str | None = None) ->
 
 def _download(lock_key: str, source: RepoSource) -> Path:
     if source.provider == "azdevops":
-        from .azdevops import get_azdevops_headers
+        from skillup.azdevops import get_azdevops_headers
 
         return download_release(lock_key, source.cache_key, source.zip_url, get_azdevops_headers())
     return download_release(lock_key, source.cache_key, source.zip_url)
