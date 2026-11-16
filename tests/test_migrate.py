@@ -49,14 +49,14 @@ def _write_skills_lock(directory: Path, skills: dict) -> Path:
 
 
 def test_migrate_missing_file(temp_dirs: tuple[Path, Path]) -> None:
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
     result = runner.invoke(app, ["migrate", str(fake_cwd / "nonexistent.json")])
     assert result.exit_code == 1
     assert "File not found" in result.stdout
 
 
 def test_migrate_creates_lock(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
         fake_cwd,
@@ -84,7 +84,7 @@ def test_migrate_creates_lock(temp_dirs: tuple[Path, Path], mock_network: dict[s
 
 
 def test_migrate_groups_skills_by_repo(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
         fake_cwd,
@@ -104,7 +104,7 @@ def test_migrate_groups_skills_by_repo(temp_dirs: tuple[Path, Path], mock_networ
 
 
 def test_migrate_skips_non_github_source(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
         fake_cwd,
@@ -124,7 +124,7 @@ def test_migrate_skips_non_github_source(temp_dirs: tuple[Path, Path], mock_netw
 
 
 def test_migrate_no_github_skills(temp_dirs: tuple[Path, Path]) -> None:
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
 
     _write_skills_lock(
         fake_cwd,
@@ -139,7 +139,7 @@ def test_migrate_no_github_skills(temp_dirs: tuple[Path, Path]) -> None:
 
 
 def test_migrate_custom_input_path(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
 
     custom_path = fake_cwd / "custom-lock.json"
     custom_path.write_text(
@@ -162,7 +162,7 @@ def test_migrate_custom_input_path(temp_dirs: tuple[Path, Path], mock_network: d
 
 
 def test_migrate_global_flag(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
-    fake_home, fake_cwd = temp_dirs
+    fake_home, _fake_cwd = temp_dirs
 
     _write_skills_lock(
         fake_home,

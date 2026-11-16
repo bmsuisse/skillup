@@ -79,7 +79,7 @@ def test_get_latest_release_uses_token(mock_token: MagicMock) -> None:
     with patch("skillup.http._session") as mock_session:
         mock_session.get.return_value = mock_response
         get_latest_release("owner/repo")
-        args, kwargs = mock_session.get.call_args
+        _args, kwargs = mock_session.get.call_args
 
     assert kwargs["headers"]["Authorization"] == "token test_token"
 
@@ -94,7 +94,7 @@ def test_get_commit_sha_uses_token(mock_token: MagicMock) -> None:
     with patch("skillup.http._session") as mock_session:
         mock_session.get.return_value = mock_response
         result = get_commit_sha("owner/repo", "main")
-        args, kwargs = mock_session.get.call_args
+        _args, kwargs = mock_session.get.call_args
 
     assert result == "abc123"
     assert kwargs["headers"]["Authorization"] == "token test_token"
@@ -133,6 +133,6 @@ def test_download_release_uses_token(
         mock_session.get.return_value = mock_response
         mock_cache.return_value = tmp_path
         download_release("owner/repo", "v1.0.0", "https://example.com/release.zip")
-        args, kwargs = mock_session.get.call_args
+        _args, kwargs = mock_session.get.call_args
 
     assert kwargs["headers"]["Authorization"] == "token test_token"

@@ -118,7 +118,7 @@ def test_add_skills_global(temp_dirs: tuple[Path, Path], mock_network: dict[str,
 
 def test_remove_skills_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test removing skills from local installation."""
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
     repo = "test/repo"
     skill = "test-skill"
 
@@ -142,7 +142,7 @@ def test_remove_skills_local(temp_dirs: tuple[Path, Path], mock_network: dict[st
 
 def test_sync_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test sync in local directory."""
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
     repo = "bmsuisse/skills"
     skill = "github"
 
@@ -159,7 +159,6 @@ def test_sync_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicM
 
 def test_update_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test update in local directory."""
-    fake_home, fake_cwd = temp_dirs
     repo = "bmsuisse/skills"
     skill = "github"
 
@@ -182,7 +181,6 @@ def test_update_local(temp_dirs: tuple[Path, Path], mock_network: dict[str, Magi
 
 def test_add_skills_from_branch(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that branch-based installs store branch and commit metadata."""
-    fake_home, fake_cwd = temp_dirs
     repo = "anthropics/skills"
 
     result = runner.invoke(app, ["add", repo, "--branch", "develop", "--skill", "github"])
@@ -200,7 +198,6 @@ def test_add_skills_from_branch(temp_dirs: tuple[Path, Path], mock_network: dict
 
 def test_add_skills_falls_back_to_main_branch(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that repos without releases fall back to main."""
-    fake_home, fake_cwd = temp_dirs
     repo = "anthropics/skills"
 
     response = MagicMock(status_code=404)
@@ -220,7 +217,7 @@ def test_add_skills_falls_back_to_main_branch(temp_dirs: tuple[Path, Path], mock
 
 def test_cache_dir_override(temp_dirs: tuple[Path, Path], mock_network: dict[str, MagicMock]) -> None:
     """Test that SKILLUP_CACHE_DIR environment variable overrides the default cache dir."""
-    fake_home, fake_cwd = temp_dirs
+    fake_home, _fake_cwd = temp_dirs
     custom_cache = fake_home / "custom_cache"
     custom_cache.mkdir()
 
@@ -308,7 +305,7 @@ def test_toggle_dir_partial_then_full() -> None:
 
 def test_add_interactive_subtree_selection(temp_dirs: tuple[Path, Path], nested_skill_zip: Path) -> None:
     """Selecting a directory in interactive mode installs all skills under it."""
-    fake_home, fake_cwd = temp_dirs
+    _fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
 
     with (
@@ -330,7 +327,6 @@ def test_add_interactive_subtree_selection(temp_dirs: tuple[Path, Path], nested_
 
 def test_add_search_filter(temp_dirs: tuple[Path, Path], nested_skill_zip: Path) -> None:
     """--search filters the tree to skills whose name or path contains the term."""
-    fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
 
     with (
@@ -350,7 +346,6 @@ def test_add_search_filter(temp_dirs: tuple[Path, Path], nested_skill_zip: Path)
 
 def test_add_search_no_match(temp_dirs: tuple[Path, Path], nested_skill_zip: Path) -> None:
     """--search with no matching skills exits early with a message."""
-    fake_home, fake_cwd = temp_dirs
     repo = "org/nested"
 
     with (

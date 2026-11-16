@@ -40,7 +40,6 @@ def test_sync_no_lock(temp_dirs: tuple[Path, Path]) -> None:
 @patch("skillup.cli.download_release")
 @patch("skillup.cli.install_skill")
 def test_sync_with_lock(mock_install: MagicMock, mock_download: MagicMock, temp_dirs: tuple[Path, Path]) -> None:
-    fake_home, fake_cwd = temp_dirs
     repo = "test/repo"
     tag = "v1.0.0"
     skills = ["skill1", "skill2"]
