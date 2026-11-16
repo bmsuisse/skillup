@@ -155,7 +155,7 @@ class TestGetAzdevopsRepoSource:
     def test_resolves_main_by_default(self) -> None:
         with (
             patch("skillup.azdevops.get_azdevops_headers", return_value={}),
-            patch("skillup.http._session", self._mock_session("deadbeef")),
+            patch("skillup.azdevops.session", return_value=self._mock_session("deadbeef")),
         ):
             source = get_azdevops_repo_source("org/project/repo")
 
@@ -169,7 +169,7 @@ class TestGetAzdevopsRepoSource:
     def test_resolves_custom_branch(self) -> None:
         with (
             patch("skillup.azdevops.get_azdevops_headers", return_value={}),
-            patch("skillup.http._session", self._mock_session("cafebabe")),
+            patch("skillup.azdevops.session", return_value=self._mock_session("cafebabe")),
         ):
             source = get_azdevops_repo_source("org/project/repo", branch="develop")
 
@@ -179,7 +179,7 @@ class TestGetAzdevopsRepoSource:
     def test_accepts_full_url(self) -> None:
         with (
             patch("skillup.azdevops.get_azdevops_headers", return_value={}),
-            patch("skillup.http._session", self._mock_session("feedface")),
+            patch("skillup.azdevops.session", return_value=self._mock_session("feedface")),
         ):
             source = get_azdevops_repo_source("https://dev.azure.com/org/project/_git/repo")
 
@@ -194,7 +194,7 @@ class TestGetAzdevopsRepoSource:
 
         with (
             patch("skillup.azdevops.get_azdevops_headers", return_value={}),
-            patch("skillup.http._session", mock_session),
+            patch("skillup.azdevops.session", return_value=mock_session),
             pytest.raises(ValueError, match="No commits found"),
         ):
             get_azdevops_repo_source("org/project/repo")
@@ -202,7 +202,7 @@ class TestGetAzdevopsRepoSource:
     def test_url_encodes_special_chars(self) -> None:
         with (
             patch("skillup.azdevops.get_azdevops_headers", return_value={}),
-            patch("skillup.http._session", self._mock_session("aabbcc")),
+            patch("skillup.azdevops.session", return_value=self._mock_session("aabbcc")),
         ):
             source = get_azdevops_repo_source("org/BMS – OnPrem/BMS – OnPrem")
 
