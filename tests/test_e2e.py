@@ -77,9 +77,7 @@ def test_add_skills_local_default(temp_dirs: tuple[Path, Path], mock_network: di
     repo = "bmsuisse/skills"
 
     result = runner.invoke(app, ["add", repo, "--skill", "github"])
-    if result.exit_code != 0:
-        print(result.stdout)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
     lock_file = fake_cwd / ".agents" / "skills.lock.json"
     assert lock_file.exists()
@@ -100,9 +98,7 @@ def test_add_skills_global(temp_dirs: tuple[Path, Path], mock_network: dict[str,
     repo = "bmsuisse/skills"
 
     result = runner.invoke(app, ["--global", "add", repo, "--skill", "github"])
-    if result.exit_code != 0:
-        print(result.stdout)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
     lock_file = fake_home / ".agents" / "skills.lock.json"
     assert lock_file.exists()
