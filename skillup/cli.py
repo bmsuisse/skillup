@@ -157,7 +157,8 @@ def add(
         zip_path = _download(lock_key, source)
     except requests.HTTPError as e:
         console.print(f"[red]HTTP error downloading {short_ref}:[/red] {e}")
-        typer.echo(e.response.text)
+        if e.response is not None:
+            typer.echo(e.response.text)
         raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"[red]Error downloading {short_ref}:[/red] {e}")
